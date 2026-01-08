@@ -336,12 +336,13 @@ class SeleniumMultiDepartamentos:
                     try:
                         print(f"*** Procesando fila {row_count}: {str(fila)[:100]}...")
                         cliente = fila.get("Cliente", "").strip()
+                        cliente_nombre = fila.get("Nombre", "").strip()  # Capturar nombre del cliente
                         asunto_original = fila.get("Asunto", "").strip()
                         fecha_creacion = fila.get("Fecha Creacion", "").strip()
                         prioridad_raw = fila.get("Prioridad", "").strip().lower()
                         contrato = fila.get("Contrato", "").strip()
 
-                        print(f"***   Cliente: '{cliente}', Asunto: '{asunto_original}', Fecha: '{fecha_creacion}'")
+                        print(f"***   Cliente: '{cliente}', Nombre: '{cliente_nombre}', Asunto: '{asunto_original}', Fecha: '{fecha_creacion}'")
                         print(f"***   Prioridad: '{prioridad_raw}', Contrato: '{contrato}'")
 
                         # Lógica para determinar el asunto basado en FO en el contrato
@@ -366,6 +367,7 @@ class SeleniumMultiDepartamentos:
                             # Crear objeto para la base de datos
                             incident_data = {
                                 "Cliente": cliente,
+                                "Cliente_Nombre": cliente_nombre,  # Agregar nombre del cliente
                                 "Asunto": asunto,
                                 "Fecha_Creacion": f"{fecha_creacion}",  # Usar True en lugar de la cadena de fecha
                                 "Ticket_ID": "",  # Se llenará cuando se cree el ticket

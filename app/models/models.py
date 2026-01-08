@@ -9,6 +9,7 @@ class IncidentsDetection(db.Model):
 
     id = db.Column(db.BigInteger, primary_key=True)
     Cliente = db.Column(db.String(100))
+    Cliente_Nombre = db.Column(db.String(200))
     Asunto = db.Column(db.String(150))
     Fecha_Creacion = db.Column(db.String(100),unique=True)
     Ticket_ID = db.Column(db.Text)

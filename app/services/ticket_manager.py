@@ -127,6 +127,7 @@ class TicketManager:
                     inc_dict = {
                         "id": inc.id,
                         "Cliente": inc.Cliente,
+                        "Cliente_Nombre": inc.Cliente_Nombre if hasattr(inc, "Cliente_Nombre") else "",
                         "Asunto": inc.Asunto,
                         "Fecha_Creacion": inc.Fecha_Creacion,
                         "Estado": inc.Estado if hasattr(inc, "Estado") else "",
@@ -225,15 +226,20 @@ class TicketManager:
 
         for ticket_data in data["pending_tickets"]:
             cliente = ticket_data.get("Cliente", "")
+            cliente_nombre = ticket_data.get("Cliente_Nombre", "")  # Obtener nombre desde la BD
             asunto = ticket_data.get("Asunto", "")
             fecha_creacion = ticket_data.get("Fecha_Creacion", "")
 
             assigned_person_id = self.assign_ticket_fairly()
             
+            # Usar el nombre del cliente desde la base de datos
+            customer_name = cliente_nombre if cliente_nombre else "Cliente"
+            print(f"✅ Nombre del cliente: {customer_name}")
+            
             ticket_data = {
                 "Cliente": cliente,
                 "Asunto": asunto,
-                "note": f"Ticket creado automaticamente por Api Splynx, con fecha original de {fecha_creacion}",
+                "note": f"Ticket creado automaticamente por Api Splynx para el cliente {customer_name}, con fecha original de {fecha_creacion}",
                 "Fecha_Creacion": fecha_creacion,
                 "Prioridad": ticket_data.get("Prioridad", "medium"),
                 "assigned_to": assigned_person_id

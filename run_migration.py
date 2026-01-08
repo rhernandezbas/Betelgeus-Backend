@@ -26,6 +26,15 @@ with app.app_context():
     except Exception as e:
         print(f"Info: assigned_to ya existe o error: {e}")
         db.session.rollback()
+    
+    # Agregar columna Cliente_Nombre a tickets_detection si no existe
+    try:
+        db.session.execute(text("ALTER TABLE tickets_detection ADD COLUMN Cliente_Nombre VARCHAR(200)"))
+        db.session.commit()
+        print("Columna Cliente_Nombre agregada a tickets_detection")
+    except Exception as e:
+        print(f"Info: Cliente_Nombre ya existe o error: {e}")
+        db.session.rollback()
         
     # Crear o actualizar todas las tablas basadas en los modelos
     db.create_all()
