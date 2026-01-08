@@ -103,13 +103,13 @@ class SplynxServices:
             return None
 
     def get_unassigned_tickets(self, group_id="4"):
-        """Get all unassigned tickets from a specific group
+        """Get all unassigned tickets from a specific group, excluding closed and archived
         
         Args:
             group_id: Group ID to filter tickets (default "4" for Soporte Tecnico)
             
         Returns:
-            list: List of unassigned tickets
+            list: List of unassigned tickets (not closed, not archived)
         """
         url = f"{self.base_url}/api/2.0/admin/support/tickets"
         headers = {
@@ -125,9 +125,17 @@ class SplynxServices:
         try:
             response = requests.get(url, headers=headers, params=params, verify=self.verify_ssl)
             response.raise_for_status()
-            tickets = response.json()
-            print(f"✅ Encontrados {len(tickets)} tickets no asignados en grupo {group_id}")
-            return tickets
+            all_tickets = response.json()
+            
+            # Filtrar tickets que no estén cerrados ni archivados
+            # status_id: 3 = Closed, 4 = Archived
+            filtered_tickets = [
+                ticket for ticket in all_tickets 
+                if ticket.get('status_id') not in ['3', '4', 3, 4]
+            ]
+            
+            print(f"✅ Encontrados {len(filtered_tickets)} tickets no asignados (activos) de {len(all_tickets)} totales en grupo {group_id}")
+            return filtered_tickets
         except requests.exceptions.RequestException as e:
             print(f"❌ Error obteniendo tickets no asignados: {e}")
             return []
