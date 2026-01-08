@@ -16,6 +16,7 @@ def _archivos_base_dir():
 @blueprint.route("/", methods=["GET"])
 def health_check():
     """Health check endpoint para Docker y monitoreo"""
+    print("🏥 Health check endpoint llamado")
     return jsonify({
         "status": "healthy",
         "service": "splynx-tickets",

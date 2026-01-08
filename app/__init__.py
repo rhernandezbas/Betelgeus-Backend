@@ -12,10 +12,13 @@ def create_app() -> Flask:
     # Register blueprints
     from app.routes import blueprint as routes_bp
     app.register_blueprint(routes_bp)
+    print("✅ Blueprint registrado correctamente")
     
     # Inicializar scheduler inmediatamente al crear la app
+    print("🔧 Iniciando scheduler...")
     from app.scheduler import init_scheduler
     init_scheduler(app)
+    print("✅ Scheduler inicializado")
 
     # Minimal CORS for development
     @app.after_request
