@@ -85,7 +85,7 @@ def all_flow_tickets():
 def assign_unassigned():
     """Asigna tickets no asignados del grupo de Soporte Técnico usando round-robin"""
     try:
-        hilo = threading.Thread(target=thread_assign_unassigned_tickets)
+        hilo = threading.Thread(target=thread_assign_unassigned_tickets, args=(current_app._get_current_object(),))
         hilo.start()
         return jsonify({
             "success": True,

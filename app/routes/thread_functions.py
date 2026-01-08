@@ -42,20 +42,21 @@ def thread_create_tickets(app):
             return False
 
 
-def thread_assign_unassigned_tickets():
+def thread_assign_unassigned_tickets(app):
     """Versión para hilos de assign_unassigned_tickets"""
-    sp = SplynxServices()
-    tk = TicketManager(sp)
-    
-    try:
-        resultado = tk.assign_unassigned_tickets()
-        print(f"Asignación completada: {resultado['asignados_exitosamente']} de {resultado['total_tickets']}")
-        return resultado
-    except Exception as e:
-        print(f"Error al asignar tickets: {str(e)}")
-        return {
-            "total_tickets": 0,
-            "asignados_exitosamente": 0,
-            "errores": 1,
-            "error": str(e)
-        }
+    with app.app_context():
+        sp = SplynxServices()
+        tk = TicketManager(sp)
+        
+        try:
+            resultado = tk.assign_unassigned_tickets()
+            print(f"Asignación completada: {resultado['asignados_exitosamente']} de {resultado['total_tickets']}")
+            return resultado
+        except Exception as e:
+            print(f"Error al asignar tickets: {str(e)}")
+            return {
+                "total_tickets": 0,
+                "asignados_exitosamente": 0,
+                "errores": 1,
+                "error": str(e)
+            }
