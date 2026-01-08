@@ -17,10 +17,10 @@ jobs:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT }}
+          host: 190.7.234.37
+          username: root
+          password: YmUeXJYrO3
+          port: 22
           script: |
             # Configurar directorio del proyecto
             PROJECT_DIR="/opt/splynx-tickets"
@@ -68,10 +68,10 @@ jobs:
       - name: Verify deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT }}
+          host: 190.7.234.37
+          username: root
+          password: YmUeXJYrO3
+          port: 22
           script: |
             cd /opt/splynx-tickets
             
@@ -93,10 +93,10 @@ jobs:
       - name: Health Check
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT }}
+          host: 190.7.234.37
+          username: root
+          password: YmUeXJYrO3
+          port: 22
           script: |
             # Verificar que la aplicación responde
             echo "🏥 Verificando salud de la aplicación..."
