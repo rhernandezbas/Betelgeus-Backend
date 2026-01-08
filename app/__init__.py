@@ -14,6 +14,11 @@ def create_app() -> Flask:
     from app.routes import blueprint as routes_bp
     app.register_blueprint(routes_bp)
 
+    # Inicializar scheduler para tareas programadas
+    from app.scheduler import init_scheduler
+    with app.app_context():
+        init_scheduler(app)
+
     # Minimal CORS for development
     @app.after_request
     def add_cors_headers(response):
