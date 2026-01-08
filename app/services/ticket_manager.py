@@ -5,6 +5,8 @@ Separates business logic from API calls
 
 
 from app.services.splynx_services import SplynxServices
+from datetime import datetime
+import pytz
 
 
 class TicketManager:
@@ -22,19 +24,68 @@ class TicketManager:
         self.splynx = splynx_service
 
     def assign_ticket_fairly(self) -> int:
-        """Asigna un ticket de forma justa usando round-robin.
+        """Asigna un ticket según el horario de trabajo en zona horaria de Argentina.
+        
+        Turnos:
+        - ID 10 y 37: 12:00 AM - 8:00 AM (turno nocturno)
+        - ID 37: 8:00 AM - 3:00 PM
+        - ID 10: 8:00 AM - 6:00 PM
+        - ID 27: 10:00 AM - 5:20 PM
+        - ID 38: 5:00 PM - 11:50 PM
         
         Returns:
-            int: ID de la persona asignada
+            int: ID de la persona asignada según el horario
         """
         from app.interface.interfaces import AssignmentTrackerInterface
         
-        person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
-            self.ASSIGNABLE_PERSONS
-        )
+        # Obtener hora actual en Argentina
+        tz_argentina = pytz.timezone('America/Argentina/Buenos_Aires')
+        now = datetime.now(tz_argentina)
+        current_hour = now.hour
+        current_minute = now.minute
+        current_time_minutes = current_hour * 60 + current_minute
+        
+        # Definir horarios en minutos desde medianoche
+        # Turno nocturno: 12:00 AM (0) - 8:00 AM (480) -> IDs 10 y 37
+        # ID 37: 8:00 AM (480) - 3:00 PM (900)
+        # ID 10: 8:00 AM (480) - 6:00 PM (1080)
+        # ID 27: 10:00 AM (600) - 5:20 PM (1040)
+        # ID 38: 5:00 PM (1020) - 11:50 PM (1430)
+        
+        available_persons = []
+        
+        # Turno nocturno: 12:00 AM - 8:00 AM
+        if 0 <= current_time_minutes < 480:
+            available_persons.extend([10, 37])
+        
+        # Verificar quién está disponible según el horario diurno
+        if 480 <= current_time_minutes < 900:  # 8:00 AM - 3:00 PM
+            available_persons.append(37)
+        
+        if 480 <= current_time_minutes < 1080:  # 8:00 AM - 6:00 PM
+            available_persons.append(10)
+        
+        if 600 <= current_time_minutes < 1040:  # 10:00 AM - 5:20 PM
+            available_persons.append(27)
+        
+        if 1020 <= current_time_minutes <= 1430:  # 5:00 PM - 11:50 PM
+            available_persons.append(38)
+        
+        # Si no hay nadie disponible, usar fallback (round-robin entre todos)
+        if not available_persons:
+            print(f"⚠️  Fuera de horario laboral ({current_hour}:{current_minute:02d}). Usando asignación round-robin.")
+            person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
+                self.ASSIGNABLE_PERSONS
+            )
+        else:
+            # Asignar al que tenga menos tickets entre los disponibles
+            person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
+                available_persons
+            )
+            print(f"✅ Asignando en horario laboral ({current_hour}:{current_minute:02d}). Disponibles: {available_persons}")
         
         AssignmentTrackerInterface.increment_count(person_id)
-        print(f"Ticket asignado a persona ID: {person_id}")
+        print(f"🎫 Ticket asignado a persona ID: {person_id}")
         return person_id
 
     def check_ticket_status(self)->str:
