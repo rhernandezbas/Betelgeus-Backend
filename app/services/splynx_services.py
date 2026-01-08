@@ -130,10 +130,12 @@ class SplynxServices:
             # Filtrar tickets que:
             # 1. No estén cerrados (closed != "1")
             # 2. No tengan asignación (assign_to == 0 o "0")
+            # 3. Pertenezcan al grupo especificado
             filtered_tickets = [
                 ticket for ticket in all_tickets 
                 if ticket.get('closed') not in ['1', 1]
                 and ticket.get('assign_to') in [0, '0']
+                and str(ticket.get('group_id')) == str(group_id)
             ]
             
             print(f"✅ Encontrados {len(filtered_tickets)} tickets sin asignar (abiertos) de {len(all_tickets)} totales en grupo {group_id}")
@@ -171,17 +173,17 @@ class SplynxServices:
                 
                 # Intentar parsear JSON si hay contenido
                 try:
-                    if response.text and response.text.strip():
+                    if response.text and response.text.strip() and response.text.strip().lower() != 'none':
                         result = response.json()
                         print(f"📄 Response: {result}")
                         return result
                     else:
-                        # Respuesta vacía pero exitosa (común con 202)
-                        print(f"📄 Response vacía - asignación exitosa")
+                        # Respuesta vacía o None pero exitosa (común con 202)
+                        print(f"📄 Response vacía/None - asignación exitosa (202)")
                         return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
                 except (ValueError, Exception) as e:
                     # No es JSON válido pero la asignación fue exitosa
-                    print(f"📄 No JSON en respuesta - asignación exitosa")
+                    print(f"📄 No JSON válido - asignación exitosa (202)")
                     return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
             else:
                 response.raise_for_status()
