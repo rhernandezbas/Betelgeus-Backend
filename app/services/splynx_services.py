@@ -170,20 +170,24 @@ class SplynxServices:
             # Códigos de éxito: 200, 201, 202, 204
             if response.status_code in [200, 201, 202, 204]:
                 print(f"✅ Ticket {ticket_id} asignado a persona {assigned_to}")
+                print(f"📄 Response text: '{response.text}'")
+                print(f"📄 Response length: {len(response.text) if response.text else 0}")
                 
-                # Intentar parsear JSON si hay contenido
+                # Para código 202, siempre retornar éxito sin intentar parsear JSON
+                if response.status_code == 202:
+                    print(f"📄 Código 202 - asignación aceptada")
+                    return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
+                
+                # Para otros códigos, intentar parsear JSON
                 try:
-                    if response.text and response.text.strip() and response.text.strip().lower() != 'none':
+                    if response.text and response.text.strip():
                         result = response.json()
-                        print(f"📄 Response: {result}")
+                        print(f"📄 Response JSON: {result}")
                         return result
                     else:
-                        # Respuesta vacía o None pero exitosa (común con 202)
-                        print(f"📄 Response vacía/None - asignación exitosa (202)")
                         return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
                 except (ValueError, Exception) as e:
-                    # No es JSON válido pero la asignación fue exitosa
-                    print(f"📄 No JSON válido - asignación exitosa (202)")
+                    print(f"📄 Error parseando JSON: {e}")
                     return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
             else:
                 response.raise_for_status()
