@@ -16,7 +16,7 @@ def create_app() -> Flask:
     
     # Inicializar scheduler inmediatamente al crear la app
     print("🔧 Iniciando scheduler...")
-    from app.scheduler import init_scheduler
+    from app.utils.scheduler import init_scheduler
     init_scheduler(app)
     print("✅ Scheduler inicializado")
 
