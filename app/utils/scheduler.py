@@ -93,12 +93,12 @@ def init_scheduler(app):
     
     scheduler = BackgroundScheduler(timezone='America/Argentina/Buenos_Aires')
     
-    # Agregar job que se ejecuta cada 10 minutos
+    # Agregar job que se ejecuta cada 3 minutos
     scheduler.add_job(
         func=lambda: run_all_flow_job(app),
-        trigger=IntervalTrigger(minutes=10),
+        trigger=IntervalTrigger(minutes=3),
         id='all_flow_job',
-        name='Ejecutar all_flow cada 10 minutos',
+        name='Ejecutar all_flow cada 3 minutos',
         replace_existing=True
     )
     
@@ -108,7 +108,7 @@ def init_scheduler(app):
     
     print("\n" + "="*60)
     print("⏰ SCHEDULER INICIADO")
-    print("📋 Tarea: Ejecutar all_flow cada 10 minutos")
+    print("📋 Tarea: Ejecutar all_flow cada 3 minutos")
     print("🌎 Zona horaria: America/Argentina/Buenos_Aires")
     print(f"🔧 PID: {os.getpid()}")
     print("="*60 + "\n")

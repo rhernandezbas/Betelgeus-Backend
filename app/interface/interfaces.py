@@ -52,6 +52,7 @@ class IncidentsInterface(BaseInterface):
         try:
             incident = IncidentsDetection(
                 Cliente=data.get('Cliente'),
+                Cliente_Nombre=data.get('Cliente_Nombre'),
                 Asunto=data.get('Asunto'),
                 Fecha_Creacion=data.get('Fecha_Creacion'),
                 Ticket_ID=data.get('Ticket_ID'),
@@ -119,6 +120,8 @@ class IncidentsInterface(BaseInterface):
             # Update fields if they exist in data
             if 'Cliente' in data:
                 incident.Cliente = data['Cliente']
+            if 'Cliente_Nombre' in data:
+                incident.Cliente_Nombre = data['Cliente_Nombre']
             if 'Asunto' in data:
                 incident.Asunto = data['Asunto']
             if 'Fecha_Creacion' in data:
