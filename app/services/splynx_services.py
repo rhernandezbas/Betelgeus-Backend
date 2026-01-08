@@ -171,16 +171,18 @@ class SplynxServices:
                 
                 # Intentar parsear JSON si hay contenido
                 try:
-                    if response.text:
+                    if response.text and response.text.strip():
                         result = response.json()
                         print(f"📄 Response: {result}")
                         return result
                     else:
-                        # Respuesta vacía pero exitosa
-                        return {"success": True, "ticket_id": ticket_id}
-                except ValueError:
+                        # Respuesta vacía pero exitosa (común con 202)
+                        print(f"📄 Response vacía - asignación exitosa")
+                        return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
+                except (ValueError, Exception) as e:
                     # No es JSON válido pero la asignación fue exitosa
-                    return {"success": True, "ticket_id": ticket_id}
+                    print(f"📄 No JSON en respuesta - asignación exitosa")
+                    return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
             else:
                 response.raise_for_status()
                 
