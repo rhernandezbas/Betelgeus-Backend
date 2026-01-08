@@ -29,10 +29,14 @@ RUN poetry install --no-root --no-dev && rm -rf $POETRY_CACHE_DIR
 # Etapa final - imagen más ligera
 FROM python:3.10-slim
 
-# Instalar solo las dependencias de runtime necesarias
+# Instalar dependencias de runtime y Chrome/Chromium para Selenium
 RUN apt-get update && apt-get install -y \
     libmariadb3 \
     curl \
+    wget \
+    gnupg \
+    chromium \
+    chromium-driver \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear usuario no-root para ejecutar la aplicación
@@ -56,7 +60,9 @@ EXPOSE 7842
 # Variables de entorno por defecto (pueden ser sobrescritas)
 ENV FLASK_APP=app \
     FLASK_ENV=production \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    CHROME_BIN=/usr/bin/chromium \
+    CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
 # Healthcheck para verificar que la aplicación está corriendo
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

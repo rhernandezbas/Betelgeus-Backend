@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.service import Service
 from app.utils.config import USUARIO, CONTRASENA, LOGIN_URL, CASOS_URL, DEPARTAMENTOS_selenium
 from app.interface.interfaces import IncidentsInterface
 from flask import current_app
@@ -48,7 +49,14 @@ class SeleniumMultiDepartamentos:
             "safebrowsing.enabled": True
         })
 
-        return webdriver.Chrome(options=chrome_options)
+        # Usar ChromeDriver del sistema si existe (Docker)
+        chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/usr/bin/chromedriver')
+        if os.path.exists(chromedriver_path):
+            service = Service(executable_path=chromedriver_path)
+            return webdriver.Chrome(service=service, options=chrome_options)
+        else:
+            # Fallback a la instalación automática de Selenium
+            return webdriver.Chrome(options=chrome_options)
 
     @staticmethod
     def login_sistema( driver):
