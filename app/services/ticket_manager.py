@@ -29,7 +29,7 @@ class TicketManager:
         Turnos:
         - ID 10 y 37: 12:00 AM - 8:00 AM (turno nocturno)
         - ID 37: 8:00 AM - 3:00 PM
-        - ID 10: 8:00 AM - 6:00 PM
+        - ID 10: 8:00 AM - 4:00 PM
         - ID 27: 10:00 AM - 5:20 PM
         - ID 38: 5:00 PM - 11:50 PM
         
@@ -48,7 +48,7 @@ class TicketManager:
         # Definir horarios en minutos desde medianoche
         # Turno nocturno: 12:00 AM (0) - 8:00 AM (480) -> IDs 10 y 37
         # ID 37: 8:00 AM (480) - 3:00 PM (900)
-        # ID 10: 8:00 AM (480) - 6:00 PM (1080)
+        # ID 10: 8:00 AM (480) - 4:30 PM (990)
         # ID 27: 10:00 AM (600) - 5:20 PM (1040)
         # ID 38: 5:00 PM (1020) - 11:50 PM (1430)
         
@@ -62,7 +62,7 @@ class TicketManager:
         if 480 <= current_time_minutes < 900:  # 8:00 AM - 3:00 PM
             available_persons.append(37)
         
-        if 480 <= current_time_minutes < 1080:  # 8:00 AM - 6:00 PM
+        if 480 <= current_time_minutes < 990:  # 8:00 AM - 4:30 PM
             available_persons.append(10)
         
         if 600 <= current_time_minutes < 1040:  # 10:00 AM - 5:20 PM
