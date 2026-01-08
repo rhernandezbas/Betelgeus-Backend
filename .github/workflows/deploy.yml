@@ -69,15 +69,15 @@ jobs:
             
             # Detener contenedores existentes
             echo "🛑 Deteniendo contenedores..."
-            docker compose down 2>/dev/null || true
+            docker compose down -v 2>/dev/null || true
             
-            # Limpiar imágenes antiguas
-            echo "🧹 Limpiando imágenes antiguas..."
-            docker image prune -f
+            # Limpiar caché de Docker completamente
+            echo "🧹 Limpiando caché de Docker..."
+            docker system prune -af
             
             # Construir y levantar con los nuevos cambios
             echo "🏗️  Construyendo nueva imagen..."
-            docker compose build --no-cache
+            docker compose build --no-cache --pull
             
             echo "🚀 Iniciando contenedores..."
             docker compose up -d
