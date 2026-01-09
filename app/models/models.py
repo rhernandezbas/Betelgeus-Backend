@@ -53,6 +53,7 @@ class TicketResponseMetrics(db.Model):
     alert_count = db.Column(db.Integer, default=0)
     resolved_at = db.Column(db.DateTime)
     exceeded_threshold = db.Column(db.Boolean, default=True)
+    auditorado = db.Column(db.Boolean, default=False)  # Campo manual para auditoría
     
     def __repr__(self):
-        return f'<TicketResponseMetrics ticket_id: {self.ticket_id}, assigned_to: {self.assigned_to}, response_time: {self.response_time_minutes}min>'
+        return f'<TicketResponseMetrics ticket_id: {self.ticket_id}, assigned_to: {self.assigned_to}, response_time: {self.response_time_minutes}min, auditorado: {self.auditorado}>'

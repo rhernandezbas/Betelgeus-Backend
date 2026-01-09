@@ -497,36 +497,39 @@ class TicketManager:
                     print(f"❌ Error procesando ticket {ticket_id}: {e}")
                     resultado["errores"] += 1
             
-            # Enviar alertas agrupadas por operador
-            print(f"\n{'='*60}")
-            print(f"📤 ENVIANDO ALERTAS AGRUPADAS")
-            print(f"{'='*60}\n")
+            # Enviar alertas agrupadas por operador (si WhatsApp está habilitado)
+            from app.utils.constants import WHATSAPP_ENABLED
             
-            for assigned_to, tickets_list in tickets_por_operador.items():
-                # Usar WhatsAppService para enviar alertas
-                envio_resultado = whatsapp_service.send_overdue_tickets_alert(assigned_to, tickets_list)
+            if WHATSAPP_ENABLED:
+                print(f"\n{'='*60}")
+                print(f"📤 ENVIANDO ALERTAS AGRUPADAS")
+                print(f"{'='*60}\n")
                 
-                if envio_resultado["success"]:
-                    resultado["alertas_enviadas"] += 1
+                for assigned_to, tickets_list in tickets_por_operador.items():
+                    # Usar WhatsAppService para enviar alertas
+                    envio_resultado = whatsapp_service.send_overdue_tickets_alert(assigned_to, tickets_list)
                     
-                    # Actualizar métricas de todos los tickets enviados
-                    for ticket_data in tickets_list:
-                        ticket_id = str(ticket_data['id'])
-                        minutes_elapsed = ticket_data['minutes_elapsed']
+                    if envio_resultado["success"]:
+                        resultado["alertas_enviadas"] += 1
                         
-                        # Actualizar last_alert_sent_at y alert_count
-                        TicketResponseMetricsInterface.update_alert_sent(ticket_id, minutes_elapsed)
+                        # Actualizar métricas de todos los tickets enviados
+                        for ticket_data in tickets_list:
+                            ticket_id = str(ticket_data['id'])
+                            minutes_elapsed = ticket_data['minutes_elapsed']
+                            
+                            # Actualizar last_alert_sent_at y alert_count
+                            TicketResponseMetricsInterface.update_alert_sent(ticket_id, minutes_elapsed)
+                            
+                            resultado["detalles"].append({
+                                "ticket_id": ticket_id,
+                                "subject": ticket_data['subject'],
+                                "assigned_to": assigned_to,
+                                "minutes_elapsed": minutes_elapsed,
+                                "phone": envio_resultado["phone_number"],
+                                "estado": "ALERTA_ENVIADA"
+                            })
                         
-                        resultado["detalles"].append({
-                            "ticket_id": ticket_id,
-                            "subject": ticket_data['subject'],
-                            "assigned_to": assigned_to,
-                            "minutes_elapsed": minutes_elapsed,
-                            "phone": envio_resultado["phone_number"],
-                            "estado": "ALERTA_ENVIADA"
-                        })
-                    
-                    print(f"✅ Métricas actualizadas para {len(tickets_list)} tickets")
+                        print(f"✅ Métricas actualizadas para {len(tickets_list)} tickets")
                 else:
                     resultado["errores"] += 1
                     
@@ -540,6 +543,9 @@ class TicketManager:
                             "estado": "ERROR_ENVIO",
                             "error": envio_resultado.get("error")
                         })
+            else:
+                print(f"\nℹ️  WhatsApp deshabilitado - no se enviaron alertas de tickets vencidos")
+                print(f"   Se encontraron {len(tickets_por_operador)} operadores con tickets vencidos")
             
             print(f"\n{'='*60}")
             print(f"✅ REVISIÓN COMPLETADA")
@@ -765,12 +771,39 @@ class TicketManager:
                         # Solo incrementar el contador si la asignación fue exitosa
                         AssignmentTrackerInterface.increment_count(assigned_person_id)
                         
+                        # Enviar notificación por WhatsApp (si está habilitado)
+                        from app.utils.constants import WHATSAPP_ENABLED
+                        notificacion_enviada = False
+                        
+                        if WHATSAPP_ENABLED:
+                            # Obtener información del cliente para la notificación
+                            customer_info = self.splynx.search_customer(str(customer_id))
+                            customer_name = customer_info.get('name', 'Cliente desconocido') if customer_info else 'Cliente desconocido'
+                            
+                            # Obtener prioridad del ticket
+                            priority = ticket.get('priority', 'medium')
+                            
+                            from app.services.whatsapp_service import WhatsAppService
+                            whatsapp_service = WhatsAppService()
+                            
+                            notif_resultado = whatsapp_service.send_ticket_assignment_notification(
+                                person_id=assigned_person_id,
+                                ticket_id=str(ticket_id),
+                                subject=subject,
+                                customer_name=customer_name,
+                                priority=priority
+                            )
+                            notificacion_enviada = notif_resultado["success"]
+                        else:
+                            print(f"ℹ️  WhatsApp deshabilitado - no se envió notificación para ticket {ticket_id}")
+                        
                         resultado["asignados_exitosamente"] += 1
                         resultado["detalles"].append({
                             "ticket_id": ticket_id,
                             "subject": subject,
                             "customer_id": customer_id,
                             "assigned_to": assigned_person_id,
+                            "notificacion_enviada": notificacion_enviada,
                             "estado": "ASIGNADO"
                         })
                         print(f"✅ Ticket {ticket_id} asignado a persona {assigned_person_id}")

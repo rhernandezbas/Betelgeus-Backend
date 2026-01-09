@@ -64,6 +64,15 @@ with app.app_context():
         print(f"Info: Error al agregar constraint UNIQUE (puede que ya exista): {e}")
         db.session.rollback()
     
+    # Agregar columna auditorado si no existe
+    try:
+        db.session.execute(text("ALTER TABLE ticket_response_metrics ADD COLUMN auditorado BOOLEAN DEFAULT FALSE"))
+        db.session.commit()
+        print("✅ Columna auditorado agregada a ticket_response_metrics")
+    except Exception as e:
+        print(f"Info: auditorado ya existe o error: {e}")
+        db.session.rollback()
+    
     # Inicializar trackers para las personas asignables
     from app.interface.interfaces import AssignmentTrackerInterface
     assignable_persons = [10, 27, 37, 38]
