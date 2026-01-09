@@ -539,8 +539,21 @@ class TicketManager:
                             ticket_id = str(ticket_data['id'])
                             minutes_elapsed = ticket_data['minutes_elapsed']
                             
-                            # Actualizar last_alert_sent_at y alert_count
-                            TicketResponseMetricsInterface.update_alert_sent(ticket_id, minutes_elapsed)
+                            # Actualizar last_alert_sent_at y alert_count (crea métrica si no existe)
+                            update_success = TicketResponseMetricsInterface.update_alert_sent(
+                                ticket_id=ticket_id,
+                                response_time_minutes=minutes_elapsed,
+                                assigned_to=assigned_to,
+                                customer_id=ticket_data.get('customer_id'),
+                                customer_name=ticket_data.get('customer_name'),
+                                subject=ticket_data.get('subject'),
+                                created_at=None  # Se usará datetime.now() si no existe
+                            )
+                            
+                            if update_success:
+                                print(f"   ✅ Ticket {ticket_id}: last_alert_sent_at actualizado")
+                            else:
+                                print(f"   ❌ Ticket {ticket_id}: ERROR al actualizar last_alert_sent_at")
                             
                             resultado["detalles"].append({
                                 "ticket_id": ticket_id,
@@ -552,19 +565,19 @@ class TicketManager:
                             })
                         
                         print(f"✅ Métricas actualizadas para {len(tickets_list)} tickets")
-                else:
-                    resultado["errores"] += 1
-                    
-                    # Marcar todos los tickets como error
-                    for ticket_data in tickets_list:
-                        resultado["detalles"].append({
-                            "ticket_id": ticket_data['id'],
-                            "subject": ticket_data['subject'],
-                            "assigned_to": assigned_to,
-                            "minutes_elapsed": ticket_data['minutes_elapsed'],
-                            "estado": "ERROR_ENVIO",
-                            "error": envio_resultado.get("error")
-                        })
+                    else:
+                        resultado["errores"] += 1
+                        
+                        # Marcar todos los tickets como error
+                        for ticket_data in tickets_list:
+                            resultado["detalles"].append({
+                                "ticket_id": ticket_data['id'],
+                                "subject": ticket_data['subject'],
+                                "assigned_to": assigned_to,
+                                "minutes_elapsed": ticket_data['minutes_elapsed'],
+                                "estado": "ERROR_ENVIO",
+                                "error": envio_resultado.get("error")
+                            })
             else:
                 print(f"\nℹ️  WhatsApp deshabilitado - no se enviaron alertas de tickets vencidos")
                 print(f"   Se encontraron {len(tickets_por_operador)} operadores con tickets vencidos")

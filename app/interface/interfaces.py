@@ -343,18 +343,48 @@ class TicketResponseMetricsInterface(BaseInterface):
             return None
     
     @staticmethod
-    def update_alert_sent(ticket_id: str, response_time_minutes: int) -> bool:
-        """Update alert sent timestamp and increment alert count."""
+    def update_alert_sent(ticket_id: str, response_time_minutes: int, assigned_to: int = None, 
+                         customer_id: str = None, customer_name: str = None, 
+                         subject: str = None, created_at = None) -> bool:
+        """Update alert sent timestamp and increment alert count. Creates metric if doesn't exist."""
         try:
             from datetime import datetime
             metric = TicketResponseMetricsInterface.get_by_ticket_id(ticket_id)
+            now = datetime.now()
+            
             if metric:
-                metric.last_alert_sent_at = datetime.now()
+                # Actualizar métrica existente
+                metric.last_alert_sent_at = now
                 metric.alert_count += 1
                 metric.response_time_minutes = response_time_minutes
-            return BaseInterface.commit_changes()
+                print(f"      📝 Actualizando ticket {ticket_id}: last_alert={now}, count={metric.alert_count}")
+            else:
+                # Crear métrica nueva si no existe
+                print(f"      🆕 Creando nueva métrica para ticket {ticket_id}")
+                metric = TicketResponseMetrics(
+                    ticket_id=ticket_id,
+                    assigned_to=assigned_to,
+                    customer_id=customer_id,
+                    customer_name=customer_name,
+                    subject=subject,
+                    created_at=created_at or now,
+                    first_alert_sent_at=now,
+                    last_alert_sent_at=now,
+                    response_time_minutes=response_time_minutes,
+                    alert_count=1,
+                    exceeded_threshold=True
+                )
+                from app.utils.config import db
+                db.session.add(metric)
+            
+            commit_result = BaseInterface.commit_changes()
+            if not commit_result:
+                print(f"      ❌ Commit falló para ticket {ticket_id}")
+            return commit_result
         except Exception as e:
-            print(f"Error updating alert sent: {str(e)}")
+            print(f"      ❌ Error updating alert sent para ticket {ticket_id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
     
     @staticmethod

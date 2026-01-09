@@ -58,6 +58,13 @@ PERSON_WHATSAPP_NUMBERS = {
     38: "542324531872"   # Yaini Al
 }
 
+"""PERSON_WHATSAPP_NUMBERS = {
+    10: "541178547218",  # Gabriel Romero
+    27: "541178547218",  # Luis Sarco
+    37: "541178547218",  # Cesareo Suarez
+    38: "541178547218"   # Yaini Al
+}
+"""
 # Nombres de los operadores
 PERSON_NAMES = {
     10: "Gabriel Romero",
