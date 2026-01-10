@@ -5,6 +5,7 @@ Separates business logic from API calls
 
 
 from app.services.splynx_services import SplynxServices
+from app.interface.interfaces import TicketResponseMetricsInterface
 from datetime import datetime
 import pytz
 
