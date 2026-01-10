@@ -50,6 +50,13 @@ EVOLUTION_INSTANCE_NAME = "test1"
 # CONFIGURACIÓN DE OPERADORES
 # ============================================================================
 
+# Persona de guardia para fin de semana (sábado y domingo)
+PERSONA_GUARDIA_FINDE = 10  # Gabriel Romero
+
+# Horario de trabajo en fin de semana (sábado y domingo)
+FINDE_HORA_INICIO = 9   # 9:00 AM
+FINDE_HORA_FIN = 21     # 9:00 PM
+
 # Mapeo de IDs de personas a números de WhatsApp
 PERSON_WHATSAPP_NUMBERS = {
     10: "541159300124",  # Gabriel Romero

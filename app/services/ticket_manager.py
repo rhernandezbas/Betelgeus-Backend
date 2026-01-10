@@ -31,7 +31,10 @@ class TicketManager:
         - [TT] = Turno Tarde -> IDs 27, 38 (Luis, Yaini)
         - [TD] = Turno Día -> IDs 10, 37 (Gabriel, Cesareo)
         
-        Turnos normales:
+        Fin de semana (sábado y domingo):
+        - Solo persona de guardia (ID 10) de 9:00 AM a 9:00 PM
+        
+        Turnos normales (lunes a viernes):
         - ID 10 y 37: 12:00 AM - 8:00 AM (turno nocturno)
         - ID 37: 8:00 AM - 3:00 PM
         - ID 10: 8:00 AM - 4:00 PM
@@ -45,9 +48,27 @@ class TicketManager:
             int: ID de la persona a asignar según el horario o etiqueta
         """
         from app.interface.interfaces import AssignmentTrackerInterface
-        from app.utils.constants import TURNO_TARDE_IDS, TURNO_DIA_IDS
+        from app.utils.constants import TURNO_TARDE_IDS, TURNO_DIA_IDS, PERSONA_GUARDIA_FINDE, FINDE_HORA_INICIO, FINDE_HORA_FIN
         
-        # Verificar si hay etiqueta de turno en la nota
+        # Obtener hora actual en Argentina
+        tz_argentina = pytz.timezone('America/Argentina/Buenos_Aires')
+        now = datetime.now(tz_argentina)
+        current_hour = now.hour
+        current_minute = now.minute
+        current_time_minutes = current_hour * 60 + current_minute
+        day_of_week = now.weekday()  # 0=Lunes, 6=Domingo
+        
+        # Verificar si es fin de semana (sábado=5, domingo=6)
+        if day_of_week >= 5:
+            # Fin de semana: solo asignar a persona de guardia en horario 9-21hs
+            if FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN:
+                print(f"📅 Fin de semana - Asignando a persona de guardia (ID {PERSONA_GUARDIA_FINDE}) - {current_hour}:{current_minute:02d}")
+                return PERSONA_GUARDIA_FINDE
+            else:
+                print(f"⚠️  Fin de semana fuera de horario ({current_hour}:{current_minute:02d}). Horario: {FINDE_HORA_INICIO}:00-{FINDE_HORA_FIN}:00")
+                return PERSONA_GUARDIA_FINDE  # Asignar igual a guardia pero fuera de horario
+        
+        # Verificar si hay etiqueta de turno en la nota (solo días laborables)
         if ticket_note:
             if "[TT]" in ticket_note:
                 # Turno Tarde: asignar a Luis (27) o Yaini (38)
@@ -60,13 +81,7 @@ class TicketManager:
                 print(f"🏷️  Etiqueta [TD] detectada - Asignando a turno día: {person_id}")
                 return person_id
         
-        # Si no hay etiqueta, usar lógica normal por horario
-        # Obtener hora actual en Argentina
-        tz_argentina = pytz.timezone('America/Argentina/Buenos_Aires')
-        now = datetime.now(tz_argentina)
-        current_hour = now.hour
-        current_minute = now.minute
-        current_time_minutes = current_hour * 60 + current_minute
+        # Lógica normal por horario (lunes a viernes)
         
         # Definir horarios en minutos desde medianoche
         # Turno nocturno: 12:00 AM (0) - 8:00 AM (480) -> IDs 10 y 37

@@ -18,10 +18,23 @@ _scheduler_lock_file = '/tmp/splynx_scheduler.lock'
 
 def run_all_flow_job(app):
     """Ejecuta el flujo completo de tickets llamando al endpoint HTTP"""
+    from app.utils.constants import FINDE_HORA_INICIO, FINDE_HORA_FIN
     
     # Obtener hora actual en Argentina
     tz_argentina = pytz.timezone('America/Argentina/Buenos_Aires')
     now = datetime.now(tz_argentina)
+    day_of_week = now.weekday()  # 0=Lunes, 6=Domingo
+    current_hour = now.hour
+    
+    # Verificar si es fin de semana y si está fuera de horario
+    if day_of_week >= 5:  # Sábado o Domingo
+        if not (FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN):
+            print(f"\n{'='*60}")
+            print(f"⏸️  FIN DE SEMANA FUERA DE HORARIO - {now.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"📅 Horario de trabajo: {FINDE_HORA_INICIO}:00 - {FINDE_HORA_FIN}:00")
+            print(f"⏭️  Saltando ejecución de jobs")
+            print(f"{'='*60}\n")
+            return
     
     print(f"\n{'='*60}")
     print(f"🕐 CRON JOB INICIADO - {now.strftime('%Y-%m-%d %H:%M:%S')} (Argentina)")
