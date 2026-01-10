@@ -302,6 +302,32 @@ class TicketManager:
                     ticket_id=ticket_id
                 )
                 
+                # Registrar asignación en historial
+                TicketResponseMetricsInterface.add_assignment_to_history(
+                    ticket_id=ticket_id,
+                    assigned_to=assigned_person_id,
+                    reason="auto_assignment_on_creation"
+                )
+                
+                # Enviar notificación por WhatsApp (si está habilitado)
+                from app.utils.constants import WHATSAPP_ENABLED
+                if WHATSAPP_ENABLED:
+                    from app.services.whatsapp_service import WhatsAppService
+                    whatsapp_service = WhatsAppService()
+                    
+                    notif_resultado = whatsapp_service.send_ticket_assignment_notification(
+                        person_id=assigned_person_id,
+                        ticket_id=ticket_id,
+                        subject=ticket_data["Asunto"],
+                        customer_name=customer_name,
+                        priority=ticket_data["Prioridad"]
+                    )
+                    
+                    if notif_resultado["success"]:
+                        print(f"✅ Notificación enviada a {notif_resultado['operator_name']} para ticket {ticket_id}")
+                    else:
+                        print(f"❌ Error enviando notificación: {notif_resultado.get('error', 'Unknown')}")
+                
                 # Actualizar assigned_to en la base de datos
                 from app.interface.interfaces import IncidentsInterface
                 try:
