@@ -2,7 +2,7 @@
 
 Sistema automatizado para gestión de tickets con integración a Splynx y asignación justa de tickets.
 
-## Característicass
+## Característicasss
 
 - ✅ Integración con API de Splynx
 - ✅ Asignación automática y equitativa de tickets entre múltiples personas
