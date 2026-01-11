@@ -7,6 +7,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.utils.config import db
 from app.models.models import IncidentsDetection, AssignmentTracker, TicketResponseMetrics
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class BaseInterface:
@@ -20,7 +23,7 @@ class BaseInterface:
             return True
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Database error: {str(e)}")
+            logger.error(f"Database error: {str(e)}")
             return False
     
     @staticmethod
@@ -31,7 +34,7 @@ class BaseInterface:
             return BaseInterface.commit_changes()
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error adding item: {str(e)}")
+            logger.error(f"Error adding item: {str(e)}")
             return False
 
 
@@ -66,7 +69,7 @@ class IncidentsInterface(BaseInterface):
                 return incident
             return None
         except Exception as e:
-            print(f"Error creating incident: {str(e)}")
+            logger.error(f"Error creating incident: {str(e)}")
             return None
     
     @staticmethod
@@ -83,7 +86,7 @@ class IncidentsInterface(BaseInterface):
         try:
             return IncidentsDetection.query.get(incident_id)
         except SQLAlchemyError as e:
-            print(f"Error getting incident by ID: {str(e)}")
+            logger.error(f"Error getting incident by ID: {str(e)}")
             return None
     
     @staticmethod
@@ -97,7 +100,7 @@ class IncidentsInterface(BaseInterface):
         try:
             return IncidentsDetection.query.all()
         except SQLAlchemyError as e:
-            print(f"Error getting all incidents: {str(e)}")
+            logger.error(f"Error getting all incidents: {str(e)}")
             return []
     
     @staticmethod
@@ -141,7 +144,7 @@ class IncidentsInterface(BaseInterface):
                 return incident
             return None
         except Exception as e:
-            print(f"Error updating incident: {str(e)}")
+            logger.error(f"Error updating incident: {str(e)}")
             return None
     
     @staticmethod
@@ -163,7 +166,7 @@ class IncidentsInterface(BaseInterface):
             db.session.delete(incident)
             return BaseInterface.commit_changes()
         except Exception as e:
-            print(f"Error deleting incident: {str(e)}")
+            logger.error(f"Error deleting incident: {str(e)}")
             return False
     
     @staticmethod
@@ -180,7 +183,7 @@ class IncidentsInterface(BaseInterface):
         try:
             return IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
         except SQLAlchemyError as e:
-            print(f"Error finding incident by ticket ID: {str(e)}")
+            logger.error(f"Error finding incident by ticket ID: {str(e)}")
             return None
     
     @staticmethod
@@ -197,7 +200,7 @@ class IncidentsInterface(BaseInterface):
         try:
             return IncidentsDetection.query.filter_by(Cliente=client_name).all()
         except SQLAlchemyError as e:
-            print(f"Error finding incidents by client: {str(e)}")
+            logger.error(f"Error finding incidents by client: {str(e)}")
             return []
     
     @staticmethod
@@ -214,7 +217,7 @@ class IncidentsInterface(BaseInterface):
         try:
             return IncidentsDetection.query.filter_by(Estado=status).all()
         except SQLAlchemyError as e:
-            print(f"Error finding incidents by status: {str(e)}")
+            logger.error(f"Error finding incidents by status: {str(e)}")
             return []
 
 
@@ -235,7 +238,7 @@ class AssignmentTrackerInterface(BaseInterface):
                 return tracker
             return None
         except Exception as e:
-            print(f"Error creating assignment tracker: {str(e)}")
+            logger.error(f"Error creating assignment tracker: {str(e)}")
             return None
     
     @staticmethod
@@ -244,7 +247,7 @@ class AssignmentTrackerInterface(BaseInterface):
         try:
             return AssignmentTracker.query.filter_by(person_id=person_id).first()
         except SQLAlchemyError as e:
-            print(f"Error getting tracker by person ID: {str(e)}")
+            logger.error(f"Error getting tracker by person ID: {str(e)}")
             return None
     
     @staticmethod
@@ -253,7 +256,7 @@ class AssignmentTrackerInterface(BaseInterface):
         try:
             return AssignmentTracker.query.all()
         except SQLAlchemyError as e:
-            print(f"Error getting all trackers: {str(e)}")
+            logger.error(f"Error getting all trackers: {str(e)}")
             return []
     
     @staticmethod
@@ -271,7 +274,7 @@ class AssignmentTrackerInterface(BaseInterface):
             tracker.last_assigned = datetime.now()
             return BaseInterface.commit_changes()
         except Exception as e:
-            print(f"Error incrementing count: {str(e)}")
+            logger.error(f"Error incrementing count: {str(e)}")
             return False
     
     @staticmethod
@@ -288,7 +291,7 @@ class AssignmentTrackerInterface(BaseInterface):
             
             return min(trackers, key=trackers.get)
         except Exception as e:
-            print(f"Error getting person with least tickets: {str(e)}")
+            logger.error(f"Error getting person with least tickets: {str(e)}")
             return person_ids[0]
     
     @staticmethod
@@ -300,7 +303,7 @@ class AssignmentTrackerInterface(BaseInterface):
                 tracker.ticket_count = 0
             return BaseInterface.commit_changes()
         except Exception as e:
-            print(f"Error resetting counts: {str(e)}")
+            logger.error(f"Error resetting counts: {str(e)}")
             return False
 
 
@@ -330,7 +333,7 @@ class TicketResponseMetricsInterface(BaseInterface):
                 return metric
             return None
         except Exception as e:
-            print(f"Error creating ticket metric: {str(e)}")
+            logger.error(f"Error creating ticket metric: {str(e)}")
             return None
     
     @staticmethod
@@ -339,7 +342,7 @@ class TicketResponseMetricsInterface(BaseInterface):
         try:
             return TicketResponseMetrics.query.filter_by(ticket_id=ticket_id).first()
         except SQLAlchemyError as e:
-            print(f"Error getting metric by ticket ID: {str(e)}")
+            logger.error(f"Error getting metric by ticket ID: {str(e)}")
             return None
     
     @staticmethod
@@ -357,10 +360,10 @@ class TicketResponseMetricsInterface(BaseInterface):
                 metric.last_alert_sent_at = now
                 metric.alert_count += 1
                 metric.response_time_minutes = response_time_minutes
-                print(f"      📝 Actualizando ticket {ticket_id}: last_alert={now}, count={metric.alert_count}")
+                logger.debug(f"      📝 Actualizando ticket {ticket_id}: last_alert={now}, count={metric.alert_count}")
             else:
                 # Crear métrica nueva si no existe
-                print(f"      🆕 Creando nueva métrica para ticket {ticket_id}")
+                logger.debug(f"      🆕 Creando nueva métrica para ticket {ticket_id}")
                 metric = TicketResponseMetrics(
                     ticket_id=ticket_id,
                     assigned_to=assigned_to,
@@ -379,12 +382,12 @@ class TicketResponseMetricsInterface(BaseInterface):
             
             commit_result = BaseInterface.commit_changes()
             if not commit_result:
-                print(f"      ❌ Commit falló para ticket {ticket_id}")
+                logger.error(f"      ❌ Commit falló para ticket {ticket_id}")
             return commit_result
         except Exception as e:
-            print(f"      ❌ Error updating alert sent para ticket {ticket_id}: {str(e)}")
+            logger.error(f"      ❌ Error updating alert sent para ticket {ticket_id}: {str(e)}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             return False
     
     @staticmethod
@@ -409,13 +412,13 @@ class TicketResponseMetricsInterface(BaseInterface):
                 # Actualizar assigned_to actual
                 metric.assigned_to = assigned_to
                 
-                print(f"      📋 Historial actualizado: {len(metric.assignment_history)} asignaciones para ticket {ticket_id}")
+                logger.debug(f"      📋 Historial actualizado: {len(metric.assignment_history)} asignaciones para ticket {ticket_id}")
                 return BaseInterface.commit_changes()
             return False
         except Exception as e:
-            print(f"Error adding assignment to history: {str(e)}")
+            logger.error(f"Error adding assignment to history: {str(e)}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             return False
     
     @staticmethod
@@ -428,7 +431,7 @@ class TicketResponseMetricsInterface(BaseInterface):
                 metric.resolved_at = datetime.now()
             return BaseInterface.commit_changes()
         except Exception as e:
-            print(f"Error marking ticket as resolved: {str(e)}")
+            logger.error(f"Error marking ticket as resolved: {str(e)}")
             return False
     
     @staticmethod
@@ -437,7 +440,7 @@ class TicketResponseMetricsInterface(BaseInterface):
         try:
             return TicketResponseMetrics.query.filter_by(assigned_to=person_id).all()
         except SQLAlchemyError as e:
-            print(f"Error getting metrics by person: {str(e)}")
+            logger.error(f"Error getting metrics by person: {str(e)}")
             return []
     
     @staticmethod
@@ -446,5 +449,5 @@ class TicketResponseMetricsInterface(BaseInterface):
         try:
             return TicketResponseMetrics.query.filter_by(resolved_at=None).all()
         except SQLAlchemyError as e:
-            print(f"Error getting unresolved metrics: {str(e)}")
+            logger.error(f"Error getting unresolved metrics: {str(e)}")
             return []

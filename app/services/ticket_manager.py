@@ -8,6 +8,9 @@ from app.services.splynx_services import SplynxServices
 from app.interface.interfaces import TicketResponseMetricsInterface
 from datetime import datetime
 import pytz
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class TicketManager:
@@ -62,10 +65,10 @@ class TicketManager:
         if day_of_week >= 5:
             # Fin de semana: solo asignar a persona de guardia en horario 9-21hs
             if FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN:
-                print(f"📅 Fin de semana - Asignando a persona de guardia (ID {PERSONA_GUARDIA_FINDE}) - {current_hour}:{current_minute:02d}")
+                logger.info(f"📅 Fin de semana - Asignando a persona de guardia (ID {PERSONA_GUARDIA_FINDE}) - {current_hour}:{current_minute:02d}")
                 return PERSONA_GUARDIA_FINDE
             else:
-                print(f"⚠️  Fin de semana fuera de horario ({current_hour}:{current_minute:02d}). Horario: {FINDE_HORA_INICIO}:00-{FINDE_HORA_FIN}:00")
+                logger.warning(f"⚠️  Fin de semana fuera de horario ({current_hour}:{current_minute:02d}). Horario: {FINDE_HORA_INICIO}:00-{FINDE_HORA_FIN}:00")
                 return PERSONA_GUARDIA_FINDE  # Asignar igual a guardia pero fuera de horario
         
         # Verificar si hay etiqueta de turno en la nota (solo días laborables)
@@ -73,12 +76,12 @@ class TicketManager:
             if "[TT]" in ticket_note:
                 # Turno Tarde: asignar a Luis (27) o Yaini (38)
                 person_id = AssignmentTrackerInterface.get_person_with_least_tickets(TURNO_TARDE_IDS)
-                print(f"🏷️  Etiqueta [TT] detectada - Asignando a turno tarde: {person_id}")
+                logger.info(f"🏷️  Etiqueta [TT] detectada - Asignando a turno tarde: {person_id}")
                 return person_id
             elif "[TD]" in ticket_note:
                 # Turno Día: asignar a Gabriel (10) o Cesareo (37)
                 person_id = AssignmentTrackerInterface.get_person_with_least_tickets(TURNO_DIA_IDS)
-                print(f"🏷️  Etiqueta [TD] detectada - Asignando a turno día: {person_id}")
+                logger.info(f"🏷️  Etiqueta [TD] detectada - Asignando a turno día: {person_id}")
                 return person_id
         
         # Lógica normal por horario (lunes a viernes)
@@ -111,7 +114,7 @@ class TicketManager:
         
         # Si no hay nadie disponible, usar fallback (round-robin entre todos)
         if not available_persons:
-            print(f"⚠️  Fuera de horario laboral ({current_hour}:{current_minute:02d}). Usando asignación round-robin.")
+            logger.warning(f"⚠️  Fuera de horario laboral ({current_hour}:{current_minute:02d}). Usando asignación round-robin.")
             person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
                 self.ASSIGNABLE_PERSONS
             )
@@ -120,7 +123,7 @@ class TicketManager:
             person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
                 available_persons
             )
-            print(f"✅ Asignando en horario laboral ({current_hour}:{current_minute:02d}). Disponibles: {available_persons}")
+            logger.info(f"✅ Asignando en horario laboral ({current_hour}:{current_minute:02d}). Disponibles: {available_persons}")
         
         return person_id
 
@@ -134,7 +137,7 @@ class TicketManager:
         
         person_id = self.get_next_assignee()
         AssignmentTrackerInterface.increment_count(person_id)
-        print(f"🎫 Ticket asignado a persona ID: {person_id}")
+        logger.info(f"🎫 Ticket asignado a persona ID: {person_id}")
         return person_id
 
     def check_ticket_status(self)->str:
@@ -190,10 +193,10 @@ class TicketManager:
             resultado["total"] = len(pending_tickets)
             resultado["pending_tickets"] = pending_tickets
 
-            print(f"Se encontraron {resultado['total']} tickets pendientes de crear en Splynx")
+            logger.info(f"Se encontraron {resultado['total']} tickets pendientes de crear en Splynx")
 
         except Exception as e:
-            print(f"Error al consultar tickets pendientes: {str(e)}")
+            logger.error(f"Error al consultar tickets pendientes: {str(e)}")
 
         return resultado
 
@@ -233,10 +236,10 @@ class TicketManager:
                 
                 updated = IncidentsInterface.update(target_incident.id, update_data)
                 if updated:
-                    print(f"Ticket ID actualizado en la base de datos: {ticket_id} para {customer_id}")
+                    logger.info(f"Ticket ID actualizado en la base de datos: {ticket_id} para {customer_id}")
                     return True
                 else:
-                    print(f"Error al actualizar Ticket ID en la base de datos para {customer_id}")
+                    logger.error(f"Error al actualizar Ticket ID en la base de datos para {customer_id}")
                     return False
             else:
                 # Si no se encontró un incidente para actualizar, crear uno nuevo
@@ -254,14 +257,14 @@ class TicketManager:
                 
                 new_incident = IncidentsInterface.create(incident_data)
                 if new_incident:
-                    print(f"Nuevo ticket creado en la base de datos: {ticket_id} para {customer_id}")
+                    logger.info(f"Nuevo ticket creado en la base de datos: {ticket_id} para {customer_id}")
                     return True
                 else:
-                    print(f"Error al crear nuevo ticket en la base de datos para {customer_id}")
+                    logger.error(f"Error al crear nuevo ticket en la base de datos para {customer_id}")
                     return False
                 
         except Exception as e:
-            print(f"Error al actualizar Ticket ID en la base de datos: {e}")
+            logger.error(f"Error al actualizar Ticket ID en la base de datos: {e}")
             return False
 
     def create_ticket(self):
@@ -283,7 +286,7 @@ class TicketManager:
             
             # Usar el nombre del cliente desde la base de datos
             customer_name = cliente_nombre if cliente_nombre else "Cliente"
-            print(f"✅ Nombre del cliente: {customer_name}")
+            logger.info(f"✅ Nombre del cliente: {customer_name}")
             
             ticket_data = {
                 "Cliente": cliente,
@@ -339,9 +342,9 @@ class TicketManager:
                     )
                     
                     if notif_resultado["success"]:
-                        print(f"✅ Notificación enviada a {notif_resultado['operator_name']} para ticket {ticket_id}")
+                        logger.info(f"✅ Notificación enviada a {notif_resultado['operator_name']} para ticket {ticket_id}")
                     else:
-                        print(f"❌ Error enviando notificación: {notif_resultado.get('error', 'Unknown')}")
+                        logger.error(f"❌ Error enviando notificación: {notif_resultado.get('error', 'Unknown')}")
                 
                 # Actualizar assigned_to en la base de datos
                 from app.interface.interfaces import IncidentsInterface
@@ -353,10 +356,10 @@ class TicketManager:
                                 incident.Fecha_Creacion == fecha_creacion):
                             update_data = {"assigned_to": assigned_person_id}
                             IncidentsInterface.update(incident.id, update_data)
-                            print(f"Actualizado assigned_to={assigned_person_id} para ticket {ticket_id}")
+                            logger.info(f"Actualizado assigned_to={assigned_person_id} para ticket {ticket_id}")
                             break
                 except Exception as e:
-                    print(f"Error al actualizar assigned_to: {e}")
+                    logger.error(f"Error al actualizar assigned_to: {e}")
 
                 # Actualizar el estado is_created_splynx a True
                 try:
@@ -367,10 +370,10 @@ class TicketManager:
                                 incident.Fecha_Creacion == fecha_creacion):
                             update_data = {"is_created_splynx": True}
                             IncidentsInterface.update(incident.id, update_data)
-                            print(f"Actualizado is_created_splynx=True para ticket {ticket_id}")
+                            logger.info(f"Actualizado is_created_splynx=True para ticket {ticket_id}")
                             break
                 except Exception as e:
-                    print(f"Error al actualizar is_created_splynx: {e}")
+                    logger.error(f"Error al actualizar is_created_splynx: {e}")
 
         # Retornar la lista de tickets creados al final de la función
         return created_tickets if created_tickets else None
@@ -420,13 +423,13 @@ class TicketManager:
             resultado["total_tickets_revisados"] = len(tickets)
             
             if not tickets:
-                print("No hay tickets asignados para revisar")
+                logger.info("No hay tickets asignados para revisar")
                 return resultado
             
-            print(f"\n{'='*60}")
-            print(f"🔍 REVISANDO {len(tickets)} TICKETS ASIGNADOS")
-            print(f"⏱️  Umbral de alerta: {threshold_minutes} minutos")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"🔍 REVISANDO {len(tickets)} TICKETS ASIGNADOS")
+            logger.info(f"⏱️  Umbral de alerta: {threshold_minutes} minutos")
+            logger.info("="*60)
             
             # Obtener hora actual en Argentina
             tz_argentina = pytz.timezone(TIMEZONE)
@@ -467,10 +470,10 @@ class TicketManager:
                                 
                                 if minutes_since_update < TICKET_UPDATE_THRESHOLD_MINUTES:
                                     should_alert = False
-                                    print(f"⏭️  Ticket {ticket_id} actualizado hace {minutes_since_update} min - NO se alerta")
+                                    logger.info(f"⏭️  Ticket {ticket_id} actualizado hace {minutes_since_update} min - NO se alerta")
                             except ValueError:
                                 # Si hay error parseando updated_at, alertar de todas formas
-                                print(f"⚠️  Error parseando updated_at para ticket {ticket_id}, se procederá con alerta")
+                                logger.warning(f"⚠️  Error parseando updated_at para ticket {ticket_id}, se procederá con alerta")
                         
                         if not should_alert:
                             continue
@@ -490,7 +493,7 @@ class TicketManager:
                             
                             if minutes_since_last_alert < TICKET_RENOTIFICATION_INTERVAL_MINUTES:
                                 should_notify = False
-                                print(f"⏭️  Ticket {ticket_id} ya fue notificado hace {int(minutes_since_last_alert)} min - omitiendo")
+                                logger.info(f"⏭️  Ticket {ticket_id} ya fue notificado hace {int(minutes_since_last_alert)} min - omitiendo")
                                 resultado["detalles"].append({
                                     "ticket_id": ticket_id,
                                     "subject": subject,
@@ -538,14 +541,14 @@ class TicketManager:
                                 'exceeded_threshold': True
                             }
                             TicketResponseMetricsInterface.create(metric_data)
-                            print(f"📊 Métrica creada para ticket {ticket_id}")
+                            logger.info(f"📊 Métrica creada para ticket {ticket_id}")
                         
                         # Agrupar por operador (se actualizará métrica después de enviar)
                         if whatsapp_service.get_operator_phone(assigned_to):
                             tickets_por_operador[assigned_to].append(ticket_data)
-                            print(f"📋 Ticket {ticket_id} agregado a lista de {operator_name} - {minutes_elapsed} min")
+                            logger.info(f"📋 Ticket {ticket_id} agregado a lista de {operator_name} - {minutes_elapsed} min")
                         else:
-                            print(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
+                            logger.warning(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
                             resultado["detalles"].append({
                                 "ticket_id": ticket_id,
                                 "subject": subject,
@@ -555,19 +558,19 @@ class TicketManager:
                             })
                     
                 except ValueError as e:
-                    print(f"⚠️  Error parseando fecha del ticket {ticket_id}: {e}")
+                    logger.warning(f"⚠️  Error parseando fecha del ticket {ticket_id}: {e}")
                     resultado["errores"] += 1
                 except Exception as e:
-                    print(f"❌ Error procesando ticket {ticket_id}: {e}")
+                    logger.error(f"❌ Error procesando ticket {ticket_id}: {e}")
                     resultado["errores"] += 1
             
             # Enviar alertas agrupadas por operador (si WhatsApp está habilitado)
             from app.utils.constants import WHATSAPP_ENABLED
             
             if WHATSAPP_ENABLED:
-                print(f"\n{'='*60}")
-                print(f"📤 ENVIANDO ALERTAS AGRUPADAS")
-                print(f"{'='*60}\n")
+                logger.info("="*60)
+                logger.info(f"📤 ENVIANDO ALERTAS AGRUPADAS")
+                logger.info("="*60)
                 
                 for assigned_to, tickets_list in tickets_por_operador.items():
                     # Usar WhatsAppService para enviar alertas
@@ -593,9 +596,9 @@ class TicketManager:
                             )
                             
                             if update_success:
-                                print(f"   ✅ Ticket {ticket_id}: last_alert_sent_at actualizado")
+                                logger.info(f"   ✅ Ticket {ticket_id}: last_alert_sent_at actualizado")
                             else:
-                                print(f"   ❌ Ticket {ticket_id}: ERROR al actualizar last_alert_sent_at")
+                                logger.error(f"   ❌ Ticket {ticket_id}: ERROR al actualizar last_alert_sent_at")
                             
                             resultado["detalles"].append({
                                 "ticket_id": ticket_id,
@@ -606,7 +609,7 @@ class TicketManager:
                                 "estado": "ALERTA_ENVIADA"
                             })
                         
-                        print(f"✅ Métricas actualizadas para {len(tickets_list)} tickets")
+                        logger.info(f"✅ Métricas actualizadas para {len(tickets_list)} tickets")
                     else:
                         resultado["errores"] += 1
                         
@@ -621,21 +624,21 @@ class TicketManager:
                                 "error": envio_resultado.get("error")
                             })
             else:
-                print(f"\nℹ️  WhatsApp deshabilitado - no se enviaron alertas de tickets vencidos")
-                print(f"   Se encontraron {len(tickets_por_operador)} operadores con tickets vencidos")
+                logger.info(f"ℹ️  WhatsApp deshabilitado - no se enviaron alertas de tickets vencidos")
+                logger.info(f"   Se encontraron {len(tickets_por_operador)} operadores con tickets vencidos")
             
-            print(f"\n{'='*60}")
-            print(f"✅ REVISIÓN COMPLETADA")
-            print(f"   Total revisados: {resultado['total_tickets_revisados']}")
-            print(f"   Tickets vencidos: {resultado['tickets_vencidos']}")
-            print(f"   Operadores alertados: {resultado['alertas_enviadas']}")
-            print(f"   Errores: {resultado['errores']}")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"✅ REVISIÓN COMPLETADA")
+            logger.info(f"   Total revisados: {resultado['total_tickets_revisados']}")
+            logger.info(f"   Tickets vencidos: {resultado['tickets_vencidos']}")
+            logger.info(f"   Operadores alertados: {resultado['alertas_enviadas']}")
+            logger.info(f"   Errores: {resultado['errores']}")
+            logger.info("="*60)
             
             return resultado
             
         except Exception as e:
-            print(f"❌ Error general en revisión de tickets: {e}")
+            logger.error(f"❌ Error general en revisión de tickets: {e}")
             resultado["errores"] = resultado["total_tickets_revisados"]
             return resultado
 
@@ -674,17 +677,17 @@ class TicketManager:
             
             # Verificar si es día laboral (lunes a viernes)
             if now.weekday() >= 5:  # 5 = sábado, 6 = domingo
-                print(f"⏭️  Hoy es {['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][now.weekday()]} - No se envían notificaciones de fin de turno")
+                logger.info(f"⏭️  Hoy es {['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][now.weekday()]} - No se envían notificaciones de fin de turno")
                 return resultado
             
             current_time = now.strftime("%H:%M")
             current_hour = now.hour
             current_minute = now.minute
             
-            print(f"\n{'='*60}")
-            print(f"🕐 VERIFICANDO NOTIFICACIONES DE FIN DE TURNO")
-            print(f"⏰ Hora actual: {current_time}")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"🕐 VERIFICANDO NOTIFICACIONES DE FIN DE TURNO")
+            logger.info(f"⏰ Hora actual: {current_time}")
+            logger.info("="*60)
             
             # Inicializar servicio de WhatsApp
             whatsapp_service = WhatsAppService()
@@ -702,7 +705,7 @@ class TicketManager:
                     
                     # Excluir turno nocturno (00:00-08:00)
                     if start_time_str == "00:00" and end_time_str == "08:00":
-                        print(f"   {operator_name}: Turno nocturno {start_time_str}-{end_time_str} - OMITIDO (sin notificación)")
+                        logger.info(f"   {operator_name}: Turno nocturno {start_time_str}-{end_time_str} - OMITIDO (sin notificación)")
                         continue
                     
                     # Convertir a minutos desde medianoche para comparación
@@ -726,17 +729,17 @@ class TicketManager:
                     notification_minutes = notification_hour * 60 + notification_minute
                     
                     # Debug: mostrar cálculos
-                    print(f"   {operator_name}: Turno {start_time_str}-{end_time_str}, notificar a las {notification_hour:02d}:{notification_minute:02d}")
-                    print(f"   En turno: {is_in_shift}, Hora actual: {current_hour:02d}:{current_minute:02d}")
+                    logger.debug(f"   {operator_name}: Turno {start_time_str}-{end_time_str}, notificar a las {notification_hour:02d}:{notification_minute:02d}")
+                    logger.debug(f"   En turno: {is_in_shift}, Hora actual: {current_hour:02d}:{current_minute:02d}")
                     
                     # Verificar si es el momento exacto de enviar la notificación (con margen de ±2 minutos)
                     time_diff = abs(current_minutes - notification_minutes)
                     
-                    print(f"   Diferencia: {time_diff} minutos")
+                    logger.debug(f"   Diferencia: {time_diff} minutos")
                     
                     # IMPORTANTE: Solo notificar si está en turno Y es el momento correcto
                     if is_in_shift and time_diff <= 2:  # Margen de 2 minutos
-                        print(f"🔔 Es momento de notificar a {operator_name} (turno termina a las {end_time_str})")
+                        logger.info(f"🔔 Es momento de notificar a {operator_name} (turno termina a las {end_time_str})")
                         
                         # Obtener todos los tickets asignados a este operador
                         all_tickets = self.splynx.get_assigned_tickets(group_id=SPLYNX_SUPPORT_GROUP_ID)
@@ -745,7 +748,7 @@ class TicketManager:
                             if int(ticket.get('assign_to', 0)) == person_id
                         ]
                         
-                        print(f"📋 {operator_name} tiene {len(operator_tickets)} ticket(s) asignado(s)")
+                        logger.info(f"📋 {operator_name} tiene {len(operator_tickets)} ticket(s) asignado(s)")
                         
                         # Preparar datos de tickets para el mensaje
                         tickets_data = []
@@ -787,17 +790,17 @@ class TicketManager:
                                 "error": envio_resultado.get("error")
                             })
             
-            print(f"\n{'='*60}")
-            print(f"✅ VERIFICACIÓN COMPLETADA")
-            print(f"   Operadores notificados: {resultado['operadores_notificados']}")
-            print(f"   Total tickets reportados: {resultado['total_tickets_reportados']}")
-            print(f"   Errores: {resultado['errores']}")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"✅ VERIFICACIÓN COMPLETADA")
+            logger.info(f"   Operadores notificados: {resultado['operadores_notificados']}")
+            logger.info(f"   Total tickets reportados: {resultado['total_tickets_reportados']}")
+            logger.info(f"   Errores: {resultado['errores']}")
+            logger.info("="*60)
             
             return resultado
             
         except Exception as e:
-            print(f"❌ Error general en notificaciones de fin de turno: {e}")
+            logger.error(f"❌ Error general en notificaciones de fin de turno: {e}")
             resultado["errores"] += 1
             return resultado
 
@@ -814,7 +817,7 @@ class TicketManager:
         from app.utils.system_control import SystemControl
         
         if SystemControl.is_paused():
-            print("⏸️  Sistema PAUSADO - No se asignarán tickets")
+            logger.warning("⏸️  Sistema PAUSADO - No se asignarán tickets")
             return {
                 "total_tickets": 0,
                 "asignados_exitosamente": 0,
@@ -837,12 +840,12 @@ class TicketManager:
             resultado["total_tickets"] = len(tickets)
             
             if not tickets:
-                print("No hay tickets sin asignar")
+                logger.info("No hay tickets sin asignar")
                 return resultado
             
-            print(f"\n{'='*60}")
-            print(f"🎫 ASIGNANDO {len(tickets)} TICKETS NO ASIGNADOS")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"🎫 ASIGNANDO {len(tickets)} TICKETS NO ASIGNADOS")
+            logger.info("="*60)
             
             for ticket in tickets:
                 ticket_id = ticket.get('id')
@@ -895,7 +898,7 @@ class TicketManager:
                             )
                             notificacion_enviada = notif_resultado["success"]
                         else:
-                            print(f"ℹ️  WhatsApp deshabilitado - no se envió notificación para ticket {ticket_id}")
+                            logger.info(f"ℹ️  WhatsApp deshabilitado - no se envió notificación para ticket {ticket_id}")
                         
                         resultado["asignados_exitosamente"] += 1
                         resultado["detalles"].append({
@@ -906,7 +909,7 @@ class TicketManager:
                             "notificacion_enviada": notificacion_enviada,
                             "estado": "ASIGNADO"
                         })
-                        print(f"✅ Ticket {ticket_id} asignado a persona {assigned_person_id}")
+                        logger.info(f"✅ Ticket {ticket_id} asignado a persona {assigned_person_id}")
                     else:
                         resultado["errores"] += 1
                         resultado["detalles"].append({
@@ -915,7 +918,7 @@ class TicketManager:
                             "estado": "ERROR",
                             "error": "No se pudo actualizar en Splynx"
                         })
-                        print(f"❌ Error asignando ticket {ticket_id}")
+                        logger.error(f"❌ Error asignando ticket {ticket_id}")
                         
                 except Exception as e:
                     resultado["errores"] += 1
@@ -925,19 +928,19 @@ class TicketManager:
                         "estado": "ERROR",
                         "error": str(e)
                     })
-                    print(f"❌ Error procesando ticket {ticket_id}: {e}")
+                    logger.error(f"❌ Error procesando ticket {ticket_id}: {e}")
             
-            print(f"\n{'='*60}")
-            print(f"✅ ASIGNACIÓN COMPLETADA")
-            print(f"   Total: {resultado['total_tickets']}")
-            print(f"   Asignados: {resultado['asignados_exitosamente']}")
-            print(f"   Errores: {resultado['errores']}")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"✅ ASIGNACIÓN COMPLETADA")
+            logger.info(f"   Total: {resultado['total_tickets']}")
+            logger.info(f"   Asignados: {resultado['asignados_exitosamente']}")
+            logger.info(f"   Errores: {resultado['errores']}")
+            logger.info("="*60)
             
             return resultado
             
         except Exception as e:
-            print(f"❌ Error general en asignación de tickets: {e}")
+            logger.error(f"❌ Error general en asignación de tickets: {e}")
             resultado["errores"] = resultado["total_tickets"]
             return resultado
     
@@ -960,20 +963,20 @@ class TicketManager:
             now = datetime.now(tz_argentina)
             current_time_minutes = now.hour * 60 + now.minute
             
-            print(f"\n{'='*60}")
-            print(f"🔄 VERIFICANDO DESASIGNACIÓN AUTOMÁTICA")
-            print(f"⏰ Hora actual: {now.strftime('%H:%M')}")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"🔄 VERIFICANDO DESASIGNACIÓN AUTOMÁTICA")
+            logger.info(f"⏰ Hora actual: {now.strftime('%H:%M')}")
+            logger.info("="*60)
             
             # Obtener todos los tickets asignados (status != 3 = no cerrados)
             tickets = self.splynx.get_assigned_tickets()
             
             if not tickets:
-                print("ℹ️  No hay tickets asignados para revisar")
+                logger.info("ℹ️  No hay tickets asignados para revisar")
                 return resultado
             
             resultado["tickets_revisados"] = len(tickets)
-            print(f"📋 Revisando {len(tickets)} tickets asignados\n")
+            logger.info(f"📋 Revisando {len(tickets)} tickets asignados")
             
             for ticket in tickets:
                 ticket_id = ticket.get('id')
@@ -999,8 +1002,8 @@ class TicketManager:
                     if 60 <= minutes_after_shift <= 90:
                         should_unassign = True
                         shift_end_time = f"{schedule['end_hour']:02d}:{schedule['end_minute']:02d}"
-                        print(f"⏰ Operador {operator_name} (ID {assigned_to}): Turno terminó a las {shift_end_time}")
-                        print(f"   Han pasado {minutes_after_shift} minutos desde el fin de turno")
+                        logger.info(f"⏰ Operador {operator_name} (ID {assigned_to}): Turno terminó a las {shift_end_time}")
+                        logger.info(f"   Han pasado {minutes_after_shift} minutos desde el fin de turno")
                         break
                 
                 if should_unassign:
@@ -1017,7 +1020,7 @@ class TicketManager:
                             reason=f"auto_unassign_after_shift_end_{shift_end_time}"
                         )
                         
-                        print(f"   ✅ Ticket {ticket_id} desasignado de {operator_name}")
+                        logger.info(f"   ✅ Ticket {ticket_id} desasignado de {operator_name}")
                         
                         resultado["detalles"].append({
                             "ticket_id": ticket_id,
@@ -1029,21 +1032,21 @@ class TicketManager:
                         })
                     else:
                         resultado["errores"] += 1
-                        print(f"   ❌ Error al desasignar ticket {ticket_id}")
+                        logger.error(f"   ❌ Error al desasignar ticket {ticket_id}")
             
-            print(f"\n{'='*60}")
-            print(f"✅ DESASIGNACIÓN AUTOMÁTICA COMPLETADA")
-            print(f"   Tickets revisados: {resultado['tickets_revisados']}")
-            print(f"   Tickets desasignados: {resultado['tickets_desasignados']}")
-            print(f"   Errores: {resultado['errores']}")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"✅ DESASIGNACIÓN AUTOMÁTICA COMPLETADA")
+            logger.info(f"   Tickets revisados: {resultado['tickets_revisados']}")
+            logger.info(f"   Tickets desasignados: {resultado['tickets_desasignados']}")
+            logger.info(f"   Errores: {resultado['errores']}")
+            logger.info("="*60)
             
             return resultado
             
         except Exception as e:
-            print(f"❌ Error en desasignación automática: {e}")
+            logger.error(f"❌ Error en desasignación automática: {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             return resultado
     
     def get_operator_name(self, person_id: int) -> str:

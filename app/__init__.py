@@ -1,5 +1,8 @@
 from flask import Flask, request
 from app.utils.config import db, migrate, Config
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 def create_app() -> Flask:
     """Application factory for the app."""
@@ -12,13 +15,13 @@ def create_app() -> Flask:
     # Register blueprints
     from app.routes import blueprint as routes_bp
     app.register_blueprint(routes_bp)
-    print("✅ Blueprint registrado correctamente")
+    logger.info("✅ Blueprint registrado correctamente")
     
     # Inicializar scheduler inmediatamente al crear la app
-    print("🔧 Iniciando scheduler...")
+    logger.info("🔧 Iniciando scheduler...")
     from app.utils.scheduler import init_scheduler
     init_scheduler(app)
-    print("✅ Scheduler inicializado")
+    logger.info("✅ Scheduler inicializado")
 
     # Minimal CORS for development
     @app.after_request

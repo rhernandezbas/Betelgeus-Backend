@@ -3,6 +3,9 @@ Sistema Multi-Departamental de Creación de Tickets para Splynx
 """
 
 import os
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Configuración de departamentos
 DEPARTAMENTOS = {
@@ -25,27 +28,28 @@ class MultiDepartmentTicketCreator:
     
     def procesar_departamento(self, dept_key, dept_name):
         """Procesar tickets para un departamento específico"""
-        print(f"\n🏢 Procesando tickets para: {dept_name}")
-        print("=" * 60)
+        logger.info(f"*** Procesando departamento: {dept_name} ***")
+        logger.info("-" * 50)
         
         # Verificar que existe la carpeta del departamento en app/archivos
         base_dir = os.path.abspath(os.path.join(self.script_dir, '..', 'archivos'))
         dept_dir = os.path.join(base_dir, dept_key)
         if not os.path.exists(dept_dir):
-            print(f"❌ No existe la carpeta {dept_key}")
+            logger.error(f"❌ No existe la carpeta {dept_key}")
             return {"success": False, "error": "Carpeta no encontrada"}
         
         # Verificar que existe el archivo de clientes
         clientes_file = os.path.join(dept_dir, "clientes_extraidos.txt")
         if not os.path.exists(clientes_file):
-            print(f"❌ No existe clientes_extraidos.txt en {dept_key}")
-            print("💡 Ejecuta primero tickets_process.py")
+            logger.info(f"*** Directorio: {dept_dir}")
+            logger.info(f"*** Archivo de entrada: clientes_extraidos.txt en {dept_key}")
+            logger.error("💡 Ejecuta primero tickets_process.py")
             return {"success": False, "error": "Archivo clientes_extraidos.txt no encontrado"}
 
     
     def procesar_departamentos_seleccionados(self, departamentos_a_procesar):
         """Procesar una lista de departamentos"""
-        print("🚀 Iniciando creación de tickets multi-departamental...")
+        logger.info(f"*** Procesando en paralelo: {', '.join([name for _, name in departamentos_a_procesar])} ***")
         
         for dept_key, dept_name in departamentos_a_procesar:
             resultado = self.procesar_departamento(dept_key, dept_name)
@@ -55,9 +59,9 @@ class MultiDepartmentTicketCreator:
     
     def mostrar_resumen(self):
         """Mostrar resumen final de todos los departamentos procesados"""
-        print(f"\n{'=' * 70}")
-        print("📊 RESUMEN FINAL - CREACIÓN DE TICKETS MULTI-DEPARTAMENTAL")
-        print("=" * 70)
+        logger.info("=" * 60)
+        logger.info("*** RESUMEN DE PROCESAMIENTO ***")
+        logger.info("=" * 60)
         
         total_exitosos = 0
         total_tickets_nuevos = 0
@@ -71,22 +75,23 @@ class MultiDepartmentTicketCreator:
                 duration = resultado["duration"]
                 new_tickets = resultado["new_tickets"]
                 
-                print(f"\n✅ {dept_name}:")
-                print(f"   - Tickets nuevos creados: {new_tickets}")
-                print(f"   - Total exitosos: {stats['success']}")
-                print(f"   - Total con Ticket ID: {stats['with_ticket_id']}")
-                print(f"   - Tiempo: {duration:.2f} segundos")
+                logger.info(f"*** {dept_name}: Tickets creados correctamente ***")
+                logger.info(f"   - Tickets nuevos creados: {new_tickets}")
+                logger.info(f"   - Total exitosos: {stats['success']}")
+                logger.info(f"   - Total con Ticket ID: {stats['with_ticket_id']}")
+                logger.info(f"   - Tiempo: {duration:.2f} segundos")
                 
                 total_exitosos += 1
                 total_tickets_nuevos += new_tickets
                 total_tiempo += duration
             else:
-                print(f"\n❌ {dept_name}:")
-                print(f"   - Error: {resultado['error']}")
+                logger.error(f"*** {dept_name}: Error en el procesamiento ***")
+                logger.error(f"   - Error: {resultado['error']}")
         
-        print(f"\n{'=' * 70}")
-        print(f"📈 TOTALES GENERALES:")
-        print(f"   - Departamentos exitosos: {total_exitosos}/{len(self.resultados_departamentos)}")
-        print(f"   - Total tickets nuevos: {total_tickets_nuevos}")
-        print(f"   - Tiempo total: {total_tiempo:.2f} segundos")
-        print("🎉 Proceso multi-departamental completado!")
+        logger.info("=" * 60)
+        logger.info(f"*** TOTALES GENERALES ***")
+        logger.info("=" * 60)
+        logger.info(f"   - Departamentos exitosos: {total_exitosos}/{len(self.resultados_departamentos)}")
+        logger.info(f"   - Total tickets nuevos: {total_tickets_nuevos}")
+        logger.info(f"   - Tiempo total: {total_tiempo:.2f} segundos")
+        logger.info("🎉 Proceso multi-departamental completado!")

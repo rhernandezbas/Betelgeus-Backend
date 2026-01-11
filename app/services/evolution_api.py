@@ -3,7 +3,10 @@ Evolution API Service - Handles WhatsApp message sending
 """
 
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class EvolutionAPIService:
@@ -48,13 +51,13 @@ class EvolutionAPIService:
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
             response.raise_for_status()
             
-            print(f"✅ Mensaje enviado a {phone_number}")
+            logger.info(f"✅ Mensaje enviado a {phone_number}")
             return response.json()
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error enviando mensaje a {phone_number}: {e}")
+            logger.error(f"❌ Error enviando mensaje a {phone_number}: {e}")
             if hasattr(e, 'response') and e.response is not None:
-                print(f"📄 Response: {e.response.text}")
+                logger.error(f"📄 Response: {e.response.text}")
             return None
     
     def send_ticket_alert(self, phone_number: str, ticket_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

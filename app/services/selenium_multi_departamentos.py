@@ -14,6 +14,9 @@ from app.utils.constants import USUARIO, CONTRASENA, LOGIN_URL, CASOS_URL, DEPAR
 from app.interface.interfaces import IncidentsInterface
 from flask import current_app
 from app import create_app
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class SeleniumMultiDepartamentos:
@@ -61,15 +64,15 @@ class SeleniumMultiDepartamentos:
     @staticmethod
     def login_sistema( driver):
         """Realizar login en el sistema"""
-        print("*** Abriendo página de login...")
+        logger.info("*** Abriendo página de login...")
         driver.get(LOGIN_URL)
         time.sleep(2)
 
-        print("*** Ingresando usuario y contraseña...")
+        logger.info("*** Ingresando usuario y contraseña...")
         driver.find_element(By.NAME, "myusername").send_keys(USUARIO)
         driver.find_element(By.NAME, "mypassword").send_keys(CONTRASENA)
 
-        print("*** Haciendo clic en 'Ingresar'...")
+        logger.info("*** Haciendo clic en 'Ingresar'...")
         driver.find_element(By.ID, "submit").click()
 
         # Verificación de login
@@ -77,10 +80,10 @@ class SeleniumMultiDepartamentos:
             WebDriverWait(driver, 10).until(
                 EC.url_contains("index.php")
             )
-            print("*** Login exitoso")
+            logger.info("*** Login exitoso")
             return True
         except TimeoutException:
-            print("*** Login fallido")
+            logger.error("*** Login fallido")
             return False
 
     def descargar_csv_departamento(self,dept_key):
@@ -90,7 +93,7 @@ class SeleniumMultiDepartamentos:
         login = self.login_sistema(driver)
 
         if not login:
-            print("*** Login fallido. No se puede descargar el CSV")
+            logger.error("*** Login fallido. No se puede descargar el CSV")
             return False
 
         departamento_info = self.departamentos.get(f"{dept_key}")
@@ -102,19 +105,19 @@ class SeleniumMultiDepartamentos:
         download_dir = specific_download_dir
 
         if not departamento_info:
-            print(f"*** Departamento no encontrado: {dept_key}")
+            logger.error(f"*** Departamento no encontrado: {dept_key}")
             return False
 
-        print(f"\n*** Procesando departamento: {departamento_info['nombre_display']}")
+        logger.info(f"*** Procesando departamento: {departamento_info['nombre_display']}")
 
         # Ir a módulo Casos
-        print("*** Abriendo módulo 'Reclamos / Casos'...")
+        logger.info("*** Abriendo módulo 'Reclamos / Casos'...")
         driver.get(CASOS_URL)
         time.sleep(3)
 
         # Seleccionar Grupo específico
         try:
-            print(f"*** Seleccionando grupo '{departamento_info['nombre_display']}'...")
+            logger.info(f"*** Seleccionando grupo '{departamento_info['nombre_display']}'...")
             dropdown_grupo = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "bus_caso_grupo_chosen"))
             )
@@ -124,13 +127,13 @@ class SeleniumMultiDepartamentos:
                 EC.element_to_be_clickable((By.XPATH, departamento_info['xpath_grupo']))
             )
             opcion_grupo.click()
-            print(f"*** Grupo '{departamento_info['nombre_display']}' seleccionado")
+            logger.info(f"*** Grupo '{departamento_info['nombre_display']}' seleccionado")
         except TimeoutException:
-            print(f"*** No se encontró el grupo '{departamento_info['nombre_display']}'. Continuando...")
+            logger.warning(f"*** No se encontró el grupo '{departamento_info['nombre_display']}'. Continuando...")
 
         # Seleccionar Estado: Asignado
         try:
-            print("*** Seleccionando estado 'Asignado'...")
+            logger.info("*** Seleccionando estado 'Asignado'...")
             dropdown_estado = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "bus_caso_estado_chosen"))
             )
@@ -140,14 +143,14 @@ class SeleniumMultiDepartamentos:
                 EC.element_to_be_clickable((By.XPATH, "//li[contains(text(),'Asignado')]"))
             )
             opcion_estado.click()
-            print("*** Estado 'Asignado' seleccionado")
+            logger.info("*** Estado 'Asignado' seleccionado")
         except TimeoutException:
-            print("*** No se encontró el estado 'Asignado'. Continuando...")
+            logger.warning("*** No se encontró el estado 'Asignado'. Continuando...")
 
         time.sleep(1)
 
         # Hacer clic en Buscar
-        print("*** Haciendo clic en 'Buscar'...")
+        logger.info("*** Haciendo clic en 'Buscar'...")
         try:
             buscar_btn = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, "//input[@title='Buscar']"))
@@ -155,22 +158,22 @@ class SeleniumMultiDepartamentos:
             buscar_btn.click()
             time.sleep(3)
         except TimeoutException:
-            print("*** No se encontró el botón 'Buscar'. Continuando...")
+            logger.warning("*** No se encontró el botón 'Buscar'. Continuando...")
 
         # Cambiar filas por página a 100
         try:
-            print("*** Ajustando filas por página a 100...")
+            logger.info("*** Ajustando filas por página a 100...")
             select_lpp = Select(WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "lpp"))
             ))
             select_lpp.select_by_value("100")
             time.sleep(2)
-            print("*** Filas por página ajustadas a 100")
+            logger.info("*** Filas por página ajustadas a 100")
         except TimeoutException:
-            print("*** No se encontró el dropdown de filas por página")
+            logger.warning("*** No se encontró el dropdown de filas por página")
 
         # Descargar CSV
-        print("*** Descargando CSV...")
+        logger.info("*** Descargando CSV...")
         main_window = driver.current_window_handle
         try:
             # Obtener lista de archivos antes de la descarga
@@ -223,7 +226,7 @@ class SeleniumMultiDepartamentos:
 
                 # Renombrar
                 os.rename(source_path, target_path)
-                print(f"*** CSV descargado para {departamento_info['nombre_display']}: casos_recientes.csv")
+                logger.info(f"*** CSV descargado para {departamento_info['nombre_display']}: casos_recientes.csv")
 
                 self.guardar_en_base_datos(dept_key)
                 return True
@@ -231,14 +234,14 @@ class SeleniumMultiDepartamentos:
                 # Verificar si ya existe el archivo con el nombre correcto
                 target_path = os.path.join(download_dir, "casos_recientes.csv")
                 if os.path.exists(target_path):
-                    print(f"*** CSV ya existe para {departamento_info['nombre_display']}: casos_recientes.csv")
+                    logger.info(f"*** CSV ya existe para {departamento_info['nombre_display']}: casos_recientes.csv")
                     return True
                 else:
-                    print(f"*** No se descargó CSV para {departamento_info['nombre_display']} - Timeout")
+                    logger.warning(f"*** No se descargó CSV para {departamento_info['nombre_display']} - Timeout")
                     return False
 
         except TimeoutException:
-            print(f"*** Error descargando CSV para {departamento_info['nombre_display']}")
+            logger.error(f"*** Error descargando CSV para {departamento_info['nombre_display']}")
             return False
 
     def guardar_en_base_datos(self, dept_key):
@@ -252,7 +255,7 @@ class SeleniumMultiDepartamentos:
         Returns:
             dict: Resumen de la operación con estadísticas
         """
-        print(f"\n*** Guardando datos de {dept_key} directamente en la base de datos...")
+        logger.info(f"*** Guardando datos de {dept_key} directamente en la base de datos...")
 
         # Crear contexto de aplicación Flask
         from app import create_app
@@ -273,60 +276,60 @@ class SeleniumMultiDepartamentos:
         csv_file = os.path.join(specific_dir, "casos_recientes.csv")
 
         # Verificación detallada del CSV
-        print(f"*** Verificando CSV en: {csv_file}")
-        print(f"*** El directorio existe: {os.path.exists(specific_dir)}")
-        print(f"*** El CSV existe: {os.path.exists(csv_file)}")
+        logger.info(f"*** Verificando CSV en: {csv_file}")
+        logger.info(f"*** El directorio existe: {os.path.exists(specific_dir)}")
+        logger.info(f"*** El CSV existe: {os.path.exists(csv_file)}")
 
         # Verificar que existe el CSV
         if not os.path.exists(csv_file):
             error_msg = f"No se encontró el archivo CSV en {dept_key}"
-            print(f"*** {error_msg}")
+            logger.error(f"*** {error_msg}")
             resultado["detalles"].append({"error": error_msg})
 
             # Verificar contenido del directorio
-            print(f"*** Contenido del directorio {specific_dir}:")
+            logger.info(f"*** Contenido del directorio {specific_dir}:")
             try:
                 dir_content = os.listdir(specific_dir)
                 for item in dir_content:
-                    print(f"***   - {item}")
+                    logger.info(f"***   - {item}")
             except Exception as e:
-                print(f"*** Error al listar directorio: {str(e)}")
+                logger.error(f"*** Error al listar directorio: {str(e)}")
 
             return resultado
 
         try:
             # Verificar tamaño y contenido del CSV antes de procesarlo
             file_size = os.path.getsize(csv_file)
-            print(f"*** Tamaño del archivo CSV: {file_size} bytes")
+            logger.info(f"*** Tamaño del archivo CSV: {file_size} bytes")
 
             if file_size == 0:
                 error_msg = f"El archivo CSV está vacío"
-                print(f"*** {error_msg}")
+                logger.error(f"*** {error_msg}")
                 resultado["detalles"].append({"error": error_msg})
                 return resultado
 
             # Procesar CSV
-            print(f"*** Abriendo CSV para procesar...")
+            logger.info(f"*** Abriendo CSV para procesar...")
             with open(csv_file, newline="", encoding="latin-1") as csvfile:
                 # Verificar primeras líneas del CSV
-                print(f"*** Primeras líneas del CSV:")
+                logger.debug(f"*** Primeras líneas del CSV:")
                 csvfile.seek(0)
                 for i in range(3):
                     line = csvfile.readline().strip()
-                    print(f"***   Línea {i+1}: {line}")
+                    logger.debug(f"***   Línea {i+1}: {line}")
 
                 # Volver al inicio del archivo
                 csvfile.seek(0)
 
                 # Intentar leer el CSV con DictReader
-                print(f"*** Intentando leer con DictReader (delimitador: ';')...")
+                logger.info(f"*** Intentando leer con DictReader (delimitador: ';')...")
                 reader = csv.DictReader(csvfile, delimiter=";")
 
                 # Verificar las columnas detectadas
-                print(f"*** Columnas detectadas: {reader.fieldnames}")
+                logger.info(f"*** Columnas detectadas: {reader.fieldnames}")
 
                 # Procesar filas
-                print(f"*** Procesando filas del CSV...")
+                logger.info(f"*** Procesando filas del CSV...")
                 row_count = 0
 
                 for fila in reader:
@@ -334,7 +337,7 @@ class SeleniumMultiDepartamentos:
                     resultado["total_procesados"] += 1
 
                     try:
-                        print(f"*** Procesando fila {row_count}: {str(fila)[:100]}...")
+                        logger.debug(f"*** Procesando fila {row_count}: {str(fila)[:100]}...")
                         cliente = fila.get("Cliente", "").strip()
                         cliente_nombre = fila.get("Nombre", "").strip()  # Capturar nombre del cliente
                         asunto_original = fila.get("Asunto", "").strip()
@@ -342,8 +345,8 @@ class SeleniumMultiDepartamentos:
                         prioridad_raw = fila.get("Prioridad", "").strip().lower()
                         contrato = fila.get("Contrato", "").strip()
 
-                        print(f"***   Cliente: '{cliente}', Nombre: '{cliente_nombre}', Asunto: '{asunto_original}', Fecha: '{fecha_creacion}'")
-                        print(f"***   Prioridad: '{prioridad_raw}', Contrato: '{contrato}'")
+                        logger.debug(f"***   Cliente: '{cliente}', Nombre: '{cliente_nombre}', Asunto: '{asunto_original}', Fecha: '{fecha_creacion}'")
+                        logger.debug(f"***   Prioridad: '{prioridad_raw}', Contrato: '{contrato}'")
 
                         # Lógica para determinar el asunto basado en FO en el contrato
                         if "FO" in contrato.upper() or "FTTH" in contrato.upper():
@@ -360,7 +363,7 @@ class SeleniumMultiDepartamentos:
                         }
                         prioridad = prioridad_map.get(prioridad_raw, "medium")
 
-                        print(f"***   Asunto final: '{asunto}', Prioridad final: '{prioridad}'")
+                        logger.debug(f"***   Asunto final: '{asunto}', Prioridad final: '{prioridad}'")
 
                         # Solo procesar si hay cliente
                         if cliente:
@@ -388,7 +391,7 @@ class SeleniumMultiDepartamentos:
                                         "estado": "GUARDADO",
                                         "id": incident.id
                                     })
-                                    print(f"*** Guardado exitoso: {cliente} - {asunto}")
+                                    logger.info(f"*** Guardado exitoso: {cliente} - {asunto}")
                                 else:
                                     resultado["errores"] += 1
                                     resultado["detalles"].append({
@@ -397,7 +400,7 @@ class SeleniumMultiDepartamentos:
                                         "estado": "ERROR",
                                         "error": "No se pudo guardar en la base de datos"
                                     })
-                                    print(f"*** Error al guardar: {cliente} - {asunto}")
+                                    logger.error(f"*** Error al guardar: {cliente} - {asunto}")
                             except Exception as e:
                                 resultado["errores"] += 1
                                 resultado["detalles"].append({
@@ -406,8 +409,8 @@ class SeleniumMultiDepartamentos:
                                     "estado": "ERROR",
                                     "error": f"Error creating incident: {str(e)}"
                                 })
-                                print(f"Error creating incident: {str(e)}")
-                                print(f"*** Error al guardar: {cliente} - {asunto}")
+                                logger.error(f"Error creating incident: {str(e)}")
+                                logger.error(f"*** Error al guardar: {cliente} - {asunto}")
 
                     except Exception as e:
                         resultado["errores"] += 1
@@ -415,13 +418,13 @@ class SeleniumMultiDepartamentos:
                             "error": f"Error procesando fila: {str(e)}",
                             "fila": str(fila)
                         })
-                        print(f"*** Error procesando fila: {str(e)}")
+                        logger.error(f"*** Error procesando fila: {str(e)}")
 
-            print(f"*** Resumen: {resultado['guardados_exitosamente']} guardados de {resultado['total_procesados']} procesados")
+            logger.info(f"*** Resumen: {resultado['guardados_exitosamente']} guardados de {resultado['total_procesados']} procesados")
             return resultado
 
         except Exception as e:
-            print(f"*** Error procesando datos: {str(e)}")
+            logger.error(f"*** Error procesando datos: {str(e)}")
             resultado["detalles"].append({"error": f"Error general: {str(e)}"})
             return resultado
 
@@ -439,35 +442,35 @@ class SeleniumMultiDepartamentos:
         specific_dir = os.path.join(archivos_root, dept_key)
         csv_file = os.path.join(specific_dir, "casos_recientes.csv")
 
-        print(f"\n*** VERIFICACIÓN INICIAL ***")
-        print(f"*** Directorio de archivos: {specific_dir}")
-        print(f"*** Ruta del CSV esperado: {csv_file}")
-        print(f"*** El directorio existe: {os.path.exists(specific_dir)}")
-        print(f"*** El CSV existe antes de descargar: {os.path.exists(csv_file)}")
+        logger.info(f"*** VERIFICACIÓN INICIAL ***")
+        logger.info(f"*** Directorio de archivos: {specific_dir}")
+        logger.info(f"*** Ruta del CSV esperado: {csv_file}")
+        logger.info(f"*** El directorio existe: {os.path.exists(specific_dir)}")
+        logger.info(f"*** El CSV existe antes de descargar: {os.path.exists(csv_file)}")
 
         # Paso 1: Descargar CSV
-        print(f"\n*** INICIANDO DESCARGA DEL CSV ***")
+        logger.info(f"*** INICIANDO DESCARGA DEL CSV ***")
         descarga_exitosa = self.descargar_csv_departamento(dept_key)
 
         # Verificar después de la descarga
-        print(f"\n*** VERIFICACIÓN POST-DESCARGA ***")
-        print(f"*** Descarga reportada como exitosa: {descarga_exitosa}")
-        print(f"*** El CSV existe después de descargar: {os.path.exists(csv_file)}")
+        logger.info(f"*** VERIFICACIÓN POST-DESCARGA ***")
+        logger.info(f"*** Descarga reportada como exitosa: {descarga_exitosa}")
+        logger.info(f"*** El CSV existe después de descargar: {os.path.exists(csv_file)}")
 
         if os.path.exists(csv_file):
             try:
                 # Verificar tamaño y contenido del CSV
                 file_size = os.path.getsize(csv_file)
-                print(f"*** Tamaño del archivo CSV: {file_size} bytes")
+                logger.info(f"*** Tamaño del archivo CSV: {file_size} bytes")
 
                 # Leer primeras líneas para verificar contenido
                 with open(csv_file, 'r', encoding='latin-1') as f:
                     first_lines = [next(f) for _ in range(3)]
-                print(f"*** Primeras líneas del CSV:")
+                logger.info(f"*** Primeras líneas del CSV:")
                 for i, line in enumerate(first_lines):
-                    print(f"***   Línea {i+1}: {line.strip()}")
+                    logger.info(f"***   Línea {i+1}: {line.strip()}")
             except Exception as e:
-                print(f"*** Error al verificar el CSV: {str(e)}")
+                logger.error(f"*** Error al verificar el CSV: {str(e)}")
 
         if not descarga_exitosa:
             return {
@@ -477,7 +480,7 @@ class SeleniumMultiDepartamentos:
             }
 
         # Paso 2: Guardar en la base de datos
-        print(f"\n*** INICIANDO GUARDADO EN BASE DE DATOS ***")
+        logger.info(f"*** INICIANDO GUARDADO EN BASE DE DATOS ***")
         resultado_db = self.guardar_en_base_datos(dept_key)
 
         return {

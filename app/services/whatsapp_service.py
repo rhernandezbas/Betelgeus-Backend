@@ -12,6 +12,9 @@ from app.utils.constants import (
     PERSON_WHATSAPP_NUMBERS,
     PERSON_NAMES
 )
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class WhatsAppService:
@@ -74,7 +77,7 @@ class WhatsAppService:
         
         if not phone_number:
             resultado["error"] = "Número de WhatsApp no configurado"
-            print(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
+            logger.warning(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
             return resultado
         
         try:
@@ -86,14 +89,14 @@ class WhatsAppService:
             
             if response:
                 resultado["success"] = True
-                print(f"✅ Alerta enviada a {operator_name} ({len(tickets_list)} tickets)")
+                logger.info(f"✅ Alerta enviada a {operator_name} ({len(tickets_list)} tickets)")
             else:
                 resultado["error"] = "Error en respuesta de Evolution API"
-                print(f"❌ Error enviando alerta a {operator_name}")
+                logger.error(f"❌ Error enviando alerta a {operator_name}")
                 
         except Exception as e:
             resultado["error"] = str(e)
-            print(f"❌ Excepción enviando alerta a {operator_name}: {e}")
+            logger.error(f"❌ Excepción enviando alerta a {operator_name}: {e}")
         
         return resultado
     
@@ -124,7 +127,7 @@ class WhatsAppService:
         
         if not phone_number:
             resultado["error"] = "Número de WhatsApp no configurado"
-            print(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
+            logger.warning(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
             return resultado
         
         try:
@@ -137,14 +140,14 @@ class WhatsAppService:
             
             if response:
                 resultado["success"] = True
-                print(f"✅ Resumen de fin de turno enviado a {operator_name} ({len(tickets_list)} tickets)")
+                logger.info(f"✅ Resumen de fin de turno enviado a {operator_name} ({len(tickets_list)} tickets)")
             else:
                 resultado["error"] = "Error en respuesta de Evolution API"
-                print(f"❌ Error enviando resumen a {operator_name}")
+                logger.error(f"❌ Error enviando resumen a {operator_name}")
                 
         except Exception as e:
             resultado["error"] = str(e)
-            print(f"❌ Excepción enviando resumen a {operator_name}: {e}")
+            logger.error(f"❌ Excepción enviando resumen a {operator_name}: {e}")
         
         return resultado
     
@@ -263,14 +266,14 @@ _Sistema de Tickets Splynx_"""
             
             if response:
                 resultado["success"] = True
-                print(f"✅ Notificación de asignación enviada a {operator_name} - Ticket #{ticket_id}")
+                logger.info(f"✅ Notificación de asignación enviada a {operator_name} - Ticket #{ticket_id}")
             else:
                 resultado["error"] = "Error en respuesta de Evolution API"
-                print(f"❌ Error enviando notificación de asignación a {operator_name}")
+                logger.error(f"❌ Error enviando notificación de asignación a {operator_name}")
                 
         except Exception as e:
             resultado["error"] = str(e)
-            print(f"❌ Excepción enviando notificación de asignación: {e}")
+            logger.error(f"❌ Excepción enviando notificación de asignación: {e}")
         
         return resultado
     

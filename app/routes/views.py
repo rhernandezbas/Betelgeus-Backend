@@ -2,10 +2,12 @@
 
 import os
 import threading
-from flask import jsonify,current_app
+from flask import jsonify, current_app
 from app.routes import blueprint
 from app.routes.thread_functions import thread_download_csv, thread_close_tickets, thread_create_tickets, thread_assign_unassigned_tickets, thread_alert_overdue_tickets, thread_end_of_shift_notifications, thread_auto_unassign_after_shift
+from app.utils.logger import get_logger
 
+logger = get_logger(__name__)
 
 def _archivos_base_dir():
     """Retorna el directorio base para archivos"""
@@ -16,7 +18,7 @@ def _archivos_base_dir():
 @blueprint.route("/", methods=["GET"])
 def health_check():
     """Health check endpoint para Docker y monitoreo"""
-    print("🏥 Health check endpoint llamado")
+    logger.info("🏥 Health check endpoint llamado")
     return jsonify({
         "status": "healthy",
         "service": "splynx-tickets",
@@ -61,14 +63,14 @@ def all_flow_tickets():
     """Ejecuta procesos de tickets en secuencia, esperando a que cada uno termine"""
     try:
         # Primer hilo: download_csv
-        print("Iniciando download_csv...")
+        logger.info("Iniciando download_csv...")
         hilo1 = threading.Thread(target=thread_download_csv)
         hilo1.start()
         hilo1.join()  # Espera a que termine antes de continuar
-        print("download_csv completado")
+        logger.info("download_csv completado")
 
         create_tickets()
-        print("create_tickets completado")
+        logger.info("create_tickets completado")
 
         return jsonify({
             "success": True,

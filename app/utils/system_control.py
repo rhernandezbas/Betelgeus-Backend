@@ -1,12 +1,15 @@
 """
-Control de estado del sistema
-Permite pausar y reanudar la asignación automática y procesos
+Control de estado del sistema para pausar/reanudar operaciones
 """
 
-import os
 import json
+import os
 from datetime import datetime
+from typing import Dict, Any
+from app.utils.logger import get_logger
 from pathlib import Path
+
+logger = get_logger(__name__)
 
 # Archivo para persistir el estado del sistema
 STATE_FILE = Path(__file__).parent.parent.parent / "system_state.json"
@@ -23,7 +26,7 @@ class SystemControl:
                 with open(STATE_FILE, 'r') as f:
                     return json.load(f)
             except Exception as e:
-                print(f"Error cargando estado: {e}")
+                logger.error(f"Error cargando estado: {e}")
         
         return {
             "paused": False,
@@ -39,7 +42,7 @@ class SystemControl:
             with open(STATE_FILE, 'w') as f:
                 json.dump(state, f, indent=2)
         except Exception as e:
-            print(f"Error guardando estado: {e}")
+            logger.error(f"Error guardando estado: {e}")
     
     @staticmethod
     def is_paused() -> bool:
@@ -67,7 +70,7 @@ class SystemControl:
         }
         
         SystemControl._save_state(state)
-        print(f"⏸️  Sistema PAUSADO - {reason or 'Pausa manual'}")
+        logger.warning(f"⏸️  Sistema PAUSADO - {reason or 'Pausa manual'}")
         
         return state
     
@@ -90,7 +93,7 @@ class SystemControl:
         }
         
         SystemControl._save_state(state)
-        print(f"▶️  Sistema REANUDADO")
+        logger.info(f"▶️  Sistema REANUDADO")
         
         return state
     

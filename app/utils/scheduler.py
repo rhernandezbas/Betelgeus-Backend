@@ -10,6 +10,9 @@ from datetime import datetime
 import pytz
 import os
 import atexit
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Variable global para evitar múltiples schedulers
 _scheduler_instance = None
@@ -29,51 +32,51 @@ def run_all_flow_job(app):
     # Verificar si es fin de semana y si está fuera de horario
     if day_of_week >= 5:  # Sábado o Domingo
         if not (FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN):
-            print(f"\n{'='*60}")
-            print(f"⏸️  FIN DE SEMANA FUERA DE HORARIO - {now.strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"📅 Horario de trabajo: {FINDE_HORA_INICIO}:00 - {FINDE_HORA_FIN}:00")
-            print(f"⏭️  Saltando ejecución de jobs")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info(f"⏸️  FIN DE SEMANA FUERA DE HORARIO - {now.strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"📅 Horario de trabajo: {FINDE_HORA_INICIO}:00 - {FINDE_HORA_FIN}:00")
+            logger.info(f"⏭️  Saltando ejecución de jobs")
+            logger.info("="*60)
             return
     
-    print(f"\n{'='*60}")
-    print(f"🕐 CRON JOB INICIADO - {now.strftime('%Y-%m-%d %H:%M:%S')} (Argentina)")
-    print(f"🔧 PID: {os.getpid()}")
-    print(f"{'='*60}")
+    logger.info("="*60)
+    logger.info(f"🕐 CRON JOB INICIADO - {now.strftime('%Y-%m-%d %H:%M:%S')} (Argentina)")
+    logger.info(f"🔧 PID: {os.getpid()}")
+    logger.info("="*60)
     
     try:
         # Llamar al endpoint all_flow
-        print("📡 Llamando al endpoint /api/tickets/all_flow...")
+        logger.info("📡 Llamando al endpoint /api/tickets/all_flow...")
         response = requests.post('http://localhost:7842/api/tickets/all_flow', timeout=300)
         
         if response.status_code == 200:
-            print("✅ Endpoint all_flow ejecutado exitosamente")
-            print(f"📄 Respuesta: {response.json()}")
+            logger.info("✅ Endpoint all_flow ejecutado exitosamente")
+            logger.info(f"📄 Respuesta: {response.json()}")
         else:
-            print(f"⚠️ Endpoint all_flow respondió con código: {response.status_code}")
-            print(f"📄 Respuesta: {response.text}")
+            logger.warning(f"⚠️ Endpoint all_flow respondió con código: {response.status_code}")
+            logger.warning(f"📄 Respuesta: {response.text}")
         
         # Llamar al endpoint de asignación de tickets no asignados
-        print("\n📡 Llamando al endpoint /api/tickets/assign_unassigned...")
+        logger.info("📡 Llamando al endpoint /api/tickets/assign_unassigned...")
         response_assign = requests.post('http://localhost:7842/api/tickets/assign_unassigned', timeout=300)
         
         if response_assign.status_code == 200:
-            print("✅ Endpoint assign_unassigned ejecutado exitosamente")
-            print(f"📄 Respuesta: {response_assign.json()}")
+            logger.info("✅ Endpoint assign_unassigned ejecutado exitosamente")
+            logger.info(f"📄 Respuesta: {response_assign.json()}")
         else:
-            print(f"⚠️ Endpoint assign_unassigned respondió con código: {response_assign.status_code}")
-            print(f"📄 Respuesta: {response_assign.text}")
+            logger.warning(f"⚠️ Endpoint assign_unassigned respondió con código: {response_assign.status_code}")
+            logger.warning(f"📄 Respuesta: {response_assign.text}")
         
-        print(f"\n{'='*60}")
-        print(f"✅ CRON JOB COMPLETADO - {datetime.now(tz_argentina).strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"{'='*60}\n")
+        logger.info("="*60)
+        logger.info(f"✅ CRON JOB COMPLETADO - {datetime.now(tz_argentina).strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("="*60)
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ Error al llamar al endpoint: {str(e)}")
-        print(f"{'='*60}\n")
+        logger.error(f"❌ Error al llamar al endpoint: {str(e)}")
+        logger.info("="*60)
     except Exception as e:
-        print(f"❌ Error en cron job: {str(e)}")
-        print(f"{'='*60}\n")
+        logger.error(f"❌ Error en cron job: {str(e)}")
+        logger.info("="*60)
 
 
 def _cleanup_lock():
@@ -81,9 +84,9 @@ def _cleanup_lock():
     try:
         if os.path.exists(_scheduler_lock_file):
             os.remove(_scheduler_lock_file)
-            print("🧹 Lock file removido")
+            logger.info("🧹 Lock file removido")
     except Exception as e:
-        print(f"⚠️ Error al remover lock file: {e}")
+        logger.warning(f"⚠️ Error al remover lock file: {e}")
 
 
 def init_scheduler(app):
@@ -92,7 +95,7 @@ def init_scheduler(app):
     
     # Verificar si ya existe una instancia
     if _scheduler_instance is not None:
-        print("⚠️ Scheduler ya existe en este proceso, omitiendo...")
+        logger.warning("⚠️ Scheduler ya existe en este proceso, omitiendo...")
         return _scheduler_instance
     
     # Verificar lock file para evitar múltiples schedulers entre procesos
@@ -100,10 +103,10 @@ def init_scheduler(app):
         try:
             with open(_scheduler_lock_file, 'r') as f:
                 existing_pid = f.read().strip()
-            print(f"⚠️ Scheduler ya está corriendo en PID {existing_pid}, omitiendo...")
+            logger.warning(f"⚠️ Scheduler ya está corriendo en PID {existing_pid}, omitiendo...")
             return None
         except Exception as e:
-            print(f"⚠️ Error leyendo lock file: {e}")
+            logger.warning(f"⚠️ Error leyendo lock file: {e}")
             # Continuar de todas formas
     
     # Crear lock file con el PID actual
@@ -113,7 +116,7 @@ def init_scheduler(app):
         # Registrar limpieza al salir
         atexit.register(_cleanup_lock)
     except Exception as e:
-        print(f"⚠️ No se pudo crear lock file: {e}")
+        logger.warning(f"⚠️ No se pudo crear lock file: {e}")
     
     scheduler = BackgroundScheduler(timezone='America/Argentina/Buenos_Aires')
     
@@ -157,19 +160,19 @@ def init_scheduler(app):
     scheduler.start()
     _scheduler_instance = scheduler
     
-    print("\n" + "="*60)
-    print("⏰ SCHEDULER INICIADO")
-    print("📋 Tareas programadas:")
-    print("   • all_flow cada 3 minutos")
-    print("   • Alertas tickets vencidos cada 3 minutos")
-    print("   • Notificaciones de fin de turno cada hora")
-    print("   • Desasignación automática cada 10 minutos")
-    print("🌎 Zona horaria: America/Argentina/Buenos_Aires")
-    print(f"🔧 PID: {os.getpid()}")
-    print("="*60 + "\n")
+    logger.info("="*60)
+    logger.info("⏰ SCHEDULER INICIADO")
+    logger.info("📋 Tareas programadas:")
+    logger.info("   • all_flow cada 3 minutos")
+    logger.info("   • Alertas tickets vencidos cada 3 minutos")
+    logger.info("   • Notificaciones de fin de turno cada hora")
+    logger.info("   • Desasignación automática cada 10 minutos")
+    logger.info("🌎 Zona horaria: America/Argentina/Buenos_Aires")
+    logger.info(f"🔧 PID: {os.getpid()}")
+    logger.info("="*60)
     
     # Ejecutar inmediatamente al iniciar
-    print("🚀 Ejecutando flujo inicial al arrancar la aplicación...")
+    logger.info("🚀 Ejecutando flujo inicial al arrancar la aplicación...")
     import threading
     threading.Thread(target=lambda: run_all_flow_job(app)).start()
     

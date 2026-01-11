@@ -3,6 +3,9 @@
 import requests
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class SplynxServices:
     """class to get splynx services"""
@@ -42,11 +45,11 @@ class SplynxServices:
             token = token["access_token"]
             return token
         except requests.exceptions.SSLError as e:
-            print(f"SSL Error: {e}")
-            print("Consider setting verify_ssl=False for development (not recommended for production)")
+            logger.error(f"SSL Error: {e}")
+            logger.warning("Consider setting verify_ssl=False for development (not recommended for production)")
             raise
         except requests.exceptions.RequestException as e:
-            print(f"Request Error: {e}")
+            logger.error(f"Request Error: {e}")
             raise
 
     def search_customer(self, customer_id:str):
@@ -65,11 +68,11 @@ class SplynxServices:
             response.raise_for_status()  # Raise an exception for bad status codes
             return response.json()
         except requests.exceptions.SSLError as e:
-            print(f"SSL Error: {e}")
-            print("Consider setting verify_ssl=False for development (not recommended for production)")
+            logger.error(f"SSL Error: {e}")
+            logger.warning("Consider setting verify_ssl=False for development (not recommended for production)")
             raise
         except requests.exceptions.RequestException as e:
-            print(f"Request Error: {e}")
+            logger.error(f"Request Error: {e}")
             raise
 
 
@@ -94,12 +97,12 @@ class SplynxServices:
             return response.json()
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                print(f"Ticket {ticket_id} not found")
+                logger.warning(f"Ticket {ticket_id} not found")
             else:
-                print(f"Error checking ticket {ticket_id}: {e}")
+                logger.error(f"Error checking ticket {ticket_id}: {e}")
             return None
         except Exception as e:
-            print(f"Unexpected error checking ticket {ticket_id}: {e}")
+            logger.error(f"Unexpected error checking ticket {ticket_id}: {e}")
             return None
 
     def get_unassigned_tickets(self, group_id="4"):
@@ -138,10 +141,10 @@ class SplynxServices:
                 and str(ticket.get('group_id')) == str(group_id)
             ]
             
-            print(f"✅ Encontrados {len(filtered_tickets)} tickets sin asignar (abiertos) de {len(all_tickets)} totales en grupo {group_id}")
+            logger.info(f"✅ Encontrados {len(filtered_tickets)} tickets sin asignar (abiertos) de {len(all_tickets)} totales en grupo {group_id}")
             return filtered_tickets
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error obteniendo tickets no asignados: {e}")
+            logger.error(f"❌ Error obteniendo tickets no asignados: {e}")
             return []
 
     def get_assigned_tickets(self, group_id="4"):
@@ -179,10 +182,10 @@ class SplynxServices:
                 and str(ticket.get('group_id')) == str(group_id)
             ]
             
-            print(f"✅ Encontrados {len(filtered_tickets)} tickets asignados (abiertos) de {len(all_tickets)} totales en grupo {group_id}")
+            logger.info(f"✅ Encontrados {len(filtered_tickets)} tickets asignados (abiertos) de {len(all_tickets)} totales en grupo {group_id}")
             return filtered_tickets
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error obteniendo tickets asignados: {e}")
+            logger.error(f"❌ Error obteniendo tickets asignados: {e}")
             return []
 
     def update_ticket_assignment(self, ticket_id: str, assigned_to: int):
@@ -206,37 +209,37 @@ class SplynxServices:
         
         try:
             response = requests.put(url, headers=headers, data=data, verify=self.verify_ssl)
-            print(f"📊 Status Code: {response.status_code}")
+            logger.info(f"📊 Status Code: {response.status_code}")
             
             # Códigos de éxito: 200, 201, 202, 204
             if response.status_code in [200, 201, 202, 204]:
-                print(f"✅ Ticket {ticket_id} asignado a persona {assigned_to}")
-                print(f"📄 Response text: '{response.text}'")
-                print(f"📄 Response length: {len(response.text) if response.text else 0}")
+                logger.info(f"✅ Ticket {ticket_id} asignado a persona {assigned_to}")
+                logger.debug(f"📄 Response text: '{response.text}'")
+                logger.debug(f"📄 Response length: {len(response.text) if response.text else 0}")
                 
                 # Para código 202, siempre retornar éxito sin intentar parsear JSON
                 if response.status_code == 202:
-                    print(f"📄 Código 202 - asignación aceptada")
+                    logger.info(f"📄 Código 202 - asignación aceptada")
                     return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
                 
                 # Para otros códigos, intentar parsear JSON
                 try:
                     if response.text and response.text.strip():
                         result = response.json()
-                        print(f"📄 Response JSON: {result}")
+                        logger.debug(f"📄 Response JSON: {result}")
                         return result
                     else:
                         return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
                 except (ValueError, Exception) as e:
-                    print(f"📄 Error parseando JSON: {e}")
+                    logger.warning(f"📄 Error parseando JSON: {e}")
                     return {"success": True, "ticket_id": ticket_id, "assigned_to": assigned_to}
             else:
                 response.raise_for_status()
                 
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error asignando ticket {ticket_id}: {e}")
+            logger.error(f"❌ Error asignando ticket {ticket_id}: {e}")
             if hasattr(e, 'response') and e.response is not None:
-                print(f"📄 Response text: {e.response.text}")
+                logger.error(f"📄 Response text: {e.response.text}")
             return None
 
 
@@ -282,21 +285,21 @@ class SplynxServices:
         try:
             # Make request with SSL verification setting using form data
             response = requests.post(url, headers=headers, data=data, verify=self.verify_ssl)
-            print(response)
-            # Print response details for debugging
-            print(f"Status Code: {response.status_code}")
+            logger.debug(f"Response: {response}")
+            # Log response details for debugging
+            logger.info(f"Status Code: {response.status_code}")
             if response.status_code != 200:
-                print(f"Response Text: {response.text}")
+                logger.warning(f"Response Text: {response.text}")
             
             response.raise_for_status()  # Raise an exception for bad status codes
             return response.json()
         except requests.exceptions.HTTPError as e:
-            print(f"HTTP Error: {e}")
+            logger.error(f"HTTP Error: {e}")
             raise
         except requests.exceptions.SSLError as e:
-            print(f"SSL Error: {e}")
-            print("Consider setting verify_ssl=False for development (not recommended for production)")
+            logger.error(f"SSL Error: {e}")
+            logger.warning("Consider setting verify_ssl=False for development (not recommended for production)")
             raise
         except requests.exceptions.RequestException as e:
-            print(f"Request Error: {e}")
+            logger.error(f"Request Error: {e}")
             raise

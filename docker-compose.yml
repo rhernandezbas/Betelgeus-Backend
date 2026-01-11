@@ -12,6 +12,11 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7842/"]
       interval: 30s
