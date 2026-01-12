@@ -203,7 +203,8 @@ class WhatsAppService:
         ticket_id: str,
         subject: str,
         customer_name: str,
-        priority: str = "medium"
+        priority: str = "medium",
+        ticket_source: str = "splynx"
     ) -> Dict[str, Any]:
         """
         Envía notificación cuando se asigna un ticket a un operador
@@ -214,6 +215,7 @@ class WhatsAppService:
             subject: Asunto del ticket
             customer_name: Nombre del cliente
             priority: Prioridad del ticket
+            ticket_source: Origen del ticket ("splynx" o "gr")
             
         Returns:
             dict: Resultado del envío
@@ -242,6 +244,9 @@ class WhatsAppService:
             "urgent": "🔴"
         }.get(priority.lower(), "🟡")
         
+        # Determinar el origen del ticket para el mensaje
+        ticket_origin = "Ticket Splynx" if ticket_source.lower() == "splynx" else "Ticket GR"
+        
         # Construir mensaje
         message = f"""🎫 *NUEVO TICKET ASIGNADO*
 
@@ -249,7 +254,7 @@ Hola {operator_name},
 
 Se te ha asignado un nuevo ticket:
 
-{priority_emoji} *Ticket #{ticket_id}*
+{priority_emoji} *{ticket_origin} #{ticket_id}*
 👤 Cliente: {customer_name}
 📝 Asunto: {subject}
 ⚡ Prioridad: {priority.capitalize()}

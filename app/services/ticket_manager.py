@@ -332,12 +332,16 @@ class TicketManager:
                     from app.services.whatsapp_service import WhatsAppService
                     whatsapp_service = WhatsAppService()
                     
+                    # Detectar origen del ticket: GR si el asunto empieza con "Ticket-", Splynx en otro caso
+                    ticket_source = "gr" if ticket_data["Asunto"].startswith("Ticket-") else "splynx"
+                    
                     notif_resultado = whatsapp_service.send_ticket_assignment_notification(
                         person_id=assigned_person_id,
                         ticket_id=ticket_id,
                         subject=ticket_data["Asunto"],
                         customer_name=customer_name,
-                        priority=ticket_data["Prioridad"]
+                        priority=ticket_data["Prioridad"],
+                        ticket_source=ticket_source
                     )
                     
                     if notif_resultado["success"]:
@@ -900,6 +904,9 @@ class TicketManager:
                             # Obtener prioridad del ticket
                             priority = ticket.get('priority', 'medium')
                             
+                            # Detectar origen del ticket: GR si el asunto empieza con "Ticket-", Splynx en otro caso
+                            ticket_source = "gr" if subject.startswith("Ticket-") else "splynx"
+                            
                             from app.services.whatsapp_service import WhatsAppService
                             whatsapp_service = WhatsAppService()
                             
@@ -908,7 +915,8 @@ class TicketManager:
                                 ticket_id=str(ticket_id),
                                 subject=subject,
                                 customer_name=customer_name,
-                                priority=priority
+                                priority=priority,
+                                ticket_source=ticket_source
                             )
                             notificacion_enviada = notif_resultado["success"]
                         else:
