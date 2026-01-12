@@ -43,8 +43,8 @@ SYSTEM_PAUSED = False
 # 2. El servidor tiene acceso a internet
 # 3. El dominio está correctamente configurado
 EVOLUTION_API_BASE_URL = "https://ipnext-evolution-api.s2vvnr.easypanel.host"
-EVOLUTION_API_KEY = "AD11C79C765A-43A2-91ED-555EA96FA07C"
-EVOLUTION_INSTANCE_NAME = "test1"
+EVOLUTION_API_KEY = "636A734D58DC-4FD7-B49E-A7DD92EA402E"
+EVOLUTION_INSTANCE_NAME = "test21"
 
 # ============================================================================
 # CONFIGURACIÓN DE OPERADORES
@@ -108,7 +108,7 @@ OPERATOR_SCHEDULES = {
         {"start": "08:00", "end": "15:00"}   # Turno diurno
     ],
     38: [  # Yaini Al
-        {"start": "17:00", "end": "23:00"}   # Turno tarde/noche
+        {"start": "16:00", "end": "23:00"}   # Turno tarde/noche
     ]
 }
 
