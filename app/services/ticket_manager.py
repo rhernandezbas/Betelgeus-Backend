@@ -287,6 +287,10 @@ class TicketManager:
             customer_name = cliente_nombre if cliente_nombre else "Cliente"
             logger.info(f"✅ Nombre del cliente: {customer_name}")
             
+            # Agregar prefijo 'GR' a tickets que vienen de Gestion Real
+            if asunto.startswith("Ticket-"):
+                asunto = f"GR {asunto}"
+            
             ticket_data = {
                 "Cliente": cliente,
                 "Asunto": asunto,
