@@ -5,9 +5,11 @@ Separates business logic from API calls
 
 
 from app.services.splynx_services import SplynxServices
+from app.services.whatsapp_service import WhatsAppService
 from app.interface.interfaces import TicketResponseMetricsInterface
-from datetime import datetime
+from datetime import datetime, timedelta, time
 import pytz
+import traceback
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +28,71 @@ class TicketManager:
             splynx_service: An instance of SplynxServices
         """
         self.splynx = splynx_service
-
+        self.whatsapp = WhatsAppService()
+    
+    def calculate_business_hours_elapsed(self, created_at: datetime, now: datetime, assigned_to: int) -> int:
+        """
+        Calcula los minutos transcurridos solo durante horario laboral del operador asignado.
+        
+        Args:
+            created_at: Fecha/hora de creación del ticket
+            now: Fecha/hora actual
+            assigned_to: ID del operador asignado
+            
+        Returns:
+            int: Minutos transcurridos durante horario laboral
+        """
+        from app.utils.constants import OPERATOR_SCHEDULES, FINDE_HORA_INICIO, FINDE_HORA_FIN
+        
+        # Si no hay horario definido para el operador, usar cálculo normal
+        if assigned_to not in OPERATOR_SCHEDULES:
+            return int((now - created_at).total_seconds() / 60)
+        
+        schedules = OPERATOR_SCHEDULES[assigned_to]
+        total_minutes = 0
+        current = created_at
+        
+        # Iterar día por día desde created_at hasta now
+        while current < now:
+            day_of_week = current.weekday()  # 0=Lunes, 6=Domingo
+            
+            # Fin de semana (sábado=5, domingo=6)
+            if day_of_week >= 5:
+                # Horario de fin de semana: 9:00 AM - 9:00 PM
+                work_start = current.replace(hour=FINDE_HORA_INICIO, minute=0, second=0, microsecond=0)
+                work_end = current.replace(hour=FINDE_HORA_FIN, minute=0, second=0, microsecond=0)
+                
+                # Calcular inicio y fin del período a contar en este día
+                period_start = max(current, work_start)
+                period_end = min(now, work_end)
+                
+                # Si hay overlap con horario laboral, contar esos minutos
+                if period_start < period_end and period_start.date() == current.date():
+                    minutes = int((period_end - period_start).total_seconds() / 60)
+                    total_minutes += minutes
+            else:
+                # Lunes a Viernes: usar horarios específicos del operador
+                for schedule in schedules:
+                    start_time = datetime.strptime(schedule['start'], '%H:%M').time()
+                    end_time = datetime.strptime(schedule['end'], '%H:%M').time()
+                    
+                    work_start = current.replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0)
+                    work_end = current.replace(hour=end_time.hour, minute=end_time.minute, second=0, microsecond=0)
+                    
+                    # Calcular inicio y fin del período a contar en este turno
+                    period_start = max(current, work_start)
+                    period_end = min(now, work_end)
+                    
+                    # Si hay overlap con horario laboral, contar esos minutos
+                    if period_start < period_end and period_start.date() == current.date():
+                        minutes = int((period_end - period_start).total_seconds() / 60)
+                        total_minutes += minutes
+            
+            # Avanzar al siguiente día
+            current = (current + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        return total_minutes
+    
     def get_next_assignee(self, ticket_note: str = None) -> int:
         """Obtiene la siguiente persona a asignar según horario y round-robin, SIN incrementar contador.
         
@@ -38,11 +104,13 @@ class TicketManager:
         - Solo persona de guardia (ID 10) de 9:00 AM a 9:00 PM
         
         Turnos normales (lunes a viernes):
-        - ID 10 y 37: 12:00 AM - 8:00 AM (turno nocturno)
-        - ID 37: 8:00 AM - 3:00 PM
         - ID 10: 8:00 AM - 4:00 PM
         - ID 27: 10:00 AM - 5:20 PM
+        - ID 37: 8:00 AM - 3:00 PM
         - ID 38: 5:00 PM - 11:00 PM
+        
+        NOTA: Entre 12:00 AM - 8:00 AM nadie trabaja, tickets se asignan pero no se cuentan
+        como tiempo laboral hasta las 8:00 AM
         
         Args:
             ticket_note: Nota del ticket para verificar etiquetas [TT] o [TD]
@@ -87,17 +155,12 @@ class TicketManager:
         # Lógica normal por horario (lunes a viernes)
         
         # Definir horarios en minutos desde medianoche
-        # Turno nocturno: 12:00 AM (0) - 8:00 AM (480) -> IDs 10 y 37
-        # ID 37: 8:00 AM (480) - 3:00 PM (900)
         # ID 10: 8:00 AM (480) - 4:00 PM (960)
         # ID 27: 10:00 AM (600) - 5:20 PM (1040)
+        # ID 37: 8:00 AM (480) - 3:00 PM (900)
         # ID 38: 5:00 PM (1020) - 11:00 PM (1380)
         
         available_persons = []
-        
-        # Turno nocturno: 12:00 AM - 8:00 AM
-        if 0 <= current_time_minutes < 480:
-            available_persons.extend([10, 37])
         
         # Verificar quién está disponible según el horario diurno
         if 480 <= current_time_minutes < 900:  # 8:00 AM - 3:00 PM

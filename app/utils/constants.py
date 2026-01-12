@@ -99,14 +99,12 @@ TURNO_DIA_IDS = [10, 37]  # Gabriel Romero, Cesareo Suarez
 # Lunes a Viernes
 OPERATOR_SCHEDULES = {
     10: [  # Gabriel Romero
-        {"start": "00:00", "end": "08:00"},  # Turno nocturno
         {"start": "08:00", "end": "16:00"}   # Turno diurno
     ],
     27: [  # Luis Sarco
         {"start": "10:00", "end": "17:20"}   # Turno único
     ],
     37: [  # Cesareo Suarez
-        {"start": "00:00", "end": "08:00"},  # Turno nocturno
         {"start": "08:00", "end": "15:00"}   # Turno diurno
     ],
     38: [  # Yaini Al

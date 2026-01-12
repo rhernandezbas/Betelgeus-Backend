@@ -29,14 +29,14 @@ def run_all_flow_job(app):
     day_of_week = now.weekday()  # 0=Lunes, 6=Domingo
     current_hour = now.hour
     
-    # Verificar si es fin de semana y si está fuera de horario
+    # HORARIO LABORAL: 8 AM - 11 PM (lunes a viernes) / 9 AM - 9 PM (fin de semana)
     if day_of_week >= 5:  # Sábado o Domingo
         if not (FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN):
-            logger.info("="*60)
-            logger.info(f"⏸️  FIN DE SEMANA FUERA DE HORARIO - {now.strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"📅 Horario de trabajo: {FINDE_HORA_INICIO}:00 - {FINDE_HORA_FIN}:00")
-            logger.info(f"⏭️  Saltando ejecución de jobs")
-            logger.info("="*60)
+            logger.info(f"⏸️  FIN DE SEMANA FUERA DE HORARIO ({current_hour}:00) - Saltando ejecución")
+            return
+    else:  # Lunes a Viernes
+        if not (8 <= current_hour < 23):  # 8 AM - 11 PM
+            logger.info(f"⏸️  FUERA DE HORARIO LABORAL ({current_hour}:00) - Saltando ejecución")
             return
     
     logger.info("="*60)
