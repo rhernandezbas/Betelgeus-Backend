@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: splynx-backend
+    expose:
+      - "7842"
     environment:
       - FLASK_APP=app
       - FLASK_ENV=production
@@ -31,7 +33,8 @@ services:
     ports:
       - "7842:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - app-network
