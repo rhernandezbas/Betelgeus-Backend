@@ -4,7 +4,7 @@ Interface para gestionar plantillas de mensajes de WhatsApp
 
 from typing import List, Optional, Dict, Any
 from app.models.models import MessageTemplate
-from app.extensions import db
+from app.utils.config import db
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
