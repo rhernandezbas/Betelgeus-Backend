@@ -7,6 +7,7 @@ Separates business logic from API calls
 from app.services.splynx_services import SplynxServices
 from app.services.whatsapp_service import WhatsAppService
 from app.interface.interfaces import TicketResponseMetricsInterface
+from app.utils.schedule_helper import ScheduleHelper
 from datetime import datetime
 import pytz
 from app.utils.logger import get_logger
@@ -30,29 +31,18 @@ class TicketManager:
         self.whatsapp = WhatsAppService()
     
     def get_next_assignee(self, ticket_note: str = None) -> int:
-        """Obtiene la siguiente persona a asignar según horario y round-robin, SIN incrementar contador.
+        """Obtiene la siguiente persona a asignar según horarios de BD (schedule_type='assignment').
         
+        Usa los horarios configurados en operator_schedule con schedule_type='assignment'.
         Si la nota del ticket contiene etiquetas especiales, asigna según turno:
         - [TT] = Turno Tarde -> IDs 27, 38 (Luis, Yaini)
         - [TD] = Turno Día -> IDs 10, 37 (Gabriel, Cesareo)
-        
-        Fin de semana (sábado y domingo):
-        - Solo persona de guardia (ID 10) de 9:00 AM a 9:00 PM
-        
-        Turnos normales (lunes a viernes):
-        - ID 10: 8:00 AM - 4:00 PM
-        - ID 27: 10:00 AM - 5:20 PM
-        - ID 37: 8:00 AM - 3:00 PM
-        - ID 38: 5:00 PM - 11:00 PM
-        
-        NOTA: Entre 12:00 AM - 8:00 AM nadie trabaja, tickets se asignan pero no se cuentan
-        como tiempo laboral hasta las 8:00 AM
         
         Args:
             ticket_note: Nota del ticket para verificar etiquetas [TT] o [TD]
         
         Returns:
-            int: ID de la persona a asignar según el horario o etiqueta
+            int: ID de la persona a asignar según el horario de asignación de BD
         """
         from app.interface.interfaces import AssignmentTrackerInterface
         from app.utils.constants import TURNO_TARDE_IDS, TURNO_DIA_IDS, PERSONA_GUARDIA_FINDE, FINDE_HORA_INICIO, FINDE_HORA_FIN
@@ -62,7 +52,6 @@ class TicketManager:
         now = datetime.now(tz_argentina)
         current_hour = now.hour
         current_minute = now.minute
-        current_time_minutes = current_hour * 60 + current_minute
         day_of_week = now.weekday()  # 0=Lunes, 6=Domingo
         
         # Verificar si es fin de semana (sábado=5, domingo=6)
@@ -88,32 +77,19 @@ class TicketManager:
                 logger.info(f"🏷️  Etiqueta [TD] detectada - Asignando a turno día: {person_id}")
                 return person_id
         
-        # Lógica normal por horario (lunes a viernes)
+        # Lógica normal por horario usando BD (schedule_type='assignment')
+        logger.info(f"🔍 Buscando operadores disponibles según horarios de asignación de BD...")
         
-        # Definir horarios en minutos desde medianoche
-        # ID 10: 8:00 AM (480) - 4:00 PM (960)
-        # ID 27: 10:00 AM (600) - 5:20 PM (1040)
-        # ID 37: 8:00 AM (480) - 3:00 PM (900)
-        # ID 38: 4:00 PM (960) - 11:00 PM (1380)
-        
-        available_persons = []
-        
-        # Verificar quién está disponible según el horario diurno
-        if 480 <= current_time_minutes < 900:  # 8:00 AM - 3:00 PM
-            available_persons.append(37)
-        
-        if 480 <= current_time_minutes < 960:  # 8:00 AM - 4:00 PM
-            available_persons.append(10)
-        
-        if 600 <= current_time_minutes < 1040:  # 10:00 AM - 5:20 PM
-            available_persons.append(27)
-        
-        if 960 <= current_time_minutes <= 1380:  # 4:00 PM - 11:00 PM
-            available_persons.append(38)
+        # Obtener operadores disponibles según horarios de BD
+        available_persons = ScheduleHelper.get_available_operators(
+            self.ASSIGNABLE_PERSONS,
+            schedule_type='assignment',
+            current_time=now
+        )
         
         # Si no hay nadie disponible, usar fallback (round-robin entre todos)
         if not available_persons:
-            logger.warning(f"⚠️  Fuera de horario laboral ({current_hour}:{current_minute:02d}). Usando asignación round-robin.")
+            logger.warning(f"⚠️  Ningún operador disponible en horario de asignación ({current_hour}:{current_minute:02d}). Usando asignación round-robin.")
             person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
                 self.ASSIGNABLE_PERSONS
             )
@@ -122,7 +98,7 @@ class TicketManager:
             person_id = AssignmentTrackerInterface.get_person_with_least_tickets(
                 available_persons
             )
-            logger.info(f"✅ Asignando en horario laboral ({current_hour}:{current_minute:02d}). Disponibles: {available_persons}")
+            logger.info(f"✅ Asignando en horario de asignación ({current_hour}:{current_minute:02d}). Disponibles: {available_persons} -> Asignado a: {person_id}")
         
         return person_id
 
@@ -570,10 +546,15 @@ class TicketManager:
                             TicketResponseMetricsInterface.create(metric_data)
                             logger.info(f"📊 Métrica creada para ticket {ticket_id}")
                         
+                        # Verificar si el operador está en su horario de alertas (schedule_type='alert')
+                        if not ScheduleHelper.is_operator_available(assigned_to, schedule_type='alert', current_time=now):
+                            logger.info(f"⏰ Operador {assigned_to} fuera de horario de alertas - No se envía notificación para ticket {ticket_id}")
+                            continue
+                        
                         # Agrupar por operador (se actualizará métrica después de enviar)
                         if whatsapp_service.get_operator_phone(assigned_to):
                             tickets_por_operador[assigned_to].append(ticket_data)
-                            logger.info(f"📋 Ticket {ticket_id} agregado a lista de {operator_name} - {minutes_elapsed} min")
+                            logger.info(f"📋 Ticket {ticket_id} agregado a lista de {operator_name} - {minutes_elapsed} min (en horario de alertas)")
                         else:
                             logger.warning(f"⚠️  {operator_name} no tiene número de WhatsApp configurado")
                             resultado["detalles"].append({
