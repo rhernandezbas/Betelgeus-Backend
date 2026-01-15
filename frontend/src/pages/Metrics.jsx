@@ -124,10 +124,7 @@ export default function Metrics() {
     fetchTickets()
   }, [])
 
-  useEffect(() => {
-    applyFilters()
-  }, [filters, tickets])
-
+  // No aplicar filtros automáticamente, solo cuando se haga clic en buscar
   const applyFilters = () => {
     let filtered = [...tickets]
 
@@ -189,12 +186,22 @@ export default function Metrics() {
 
   const operatorData = metrics?.operator_distribution || []
   
-  // Filtrar solo estados con valores > 0 para el gráfico
+  // Calcular métricas dinámicamente basadas en tickets filtrados
+  const filteredMetrics = {
+    total: filteredTickets.length,
+    open: filteredTickets.filter(t => !t.exceeded_threshold && t.estado !== 'SUCCESS').length,
+    closed: filteredTickets.filter(t => t.estado === 'SUCCESS').length,
+    overdue: filteredTickets.filter(t => t.exceeded_threshold).length,
+    avgResponseTime: filteredTickets.length > 0 
+      ? (filteredTickets.reduce((sum, t) => sum + (t.response_time || 0), 0) / filteredTickets.filter(t => t.response_time).length).toFixed(2)
+      : 0
+  }
+  
+  // Filtrar solo estados con valores > 0 para el gráfico (usar datos filtrados)
   const allStatusData = [
-    { name: 'Cerrados', value: metrics?.closed_tickets || 0, color: '#00C49F' },
-    { name: 'Abiertos', value: metrics?.open_tickets || 0, color: '#FF8042' },
-    { name: 'Vencidos', value: metrics?.overdue_tickets || 0, color: '#FFBB28' },
-    { name: 'En Progreso', value: metrics?.in_progress_tickets || 0, color: '#0088FE' }
+    { name: 'Cerrados', value: filteredMetrics.closed, color: '#00C49F' },
+    { name: 'Abiertos', value: filteredMetrics.open, color: '#FF8042' },
+    { name: 'Vencidos', value: filteredMetrics.overdue, color: '#FFBB28' }
   ]
   const statusData = allStatusData.filter(item => item.value > 0)
 
@@ -269,8 +276,12 @@ export default function Metrics() {
                 <option value="Baja">Baja</option>
               </select>
             </div>
-            <div className="flex items-end">
-              <Button onClick={exportToCSV} className="w-full">
+            <div className="flex items-end gap-2">
+              <Button onClick={applyFilters} className="flex-1" variant="default">
+                <Search className="h-4 w-4 mr-2" />
+                Buscar
+              </Button>
+              <Button onClick={exportToCSV} className="flex-1" variant="outline">
                 <Download className="h-4 w-4 mr-2" />
                 Exportar CSV
               </Button>
@@ -279,7 +290,7 @@ export default function Metrics() {
         </CardContent>
       </Card>
 
-      {/* KPIs */}
+      {/* KPIs - Usar métricas filtradas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -287,7 +298,7 @@ export default function Metrics() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.total_tickets || 0}</div>
+            <div className="text-2xl font-bold">{filteredMetrics.total}</div>
             <p className="text-xs text-muted-foreground">
               En el sistema
             </p>
@@ -301,7 +312,7 @@ export default function Metrics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {metrics?.open_tickets || 0}
+              {filteredMetrics.open}
             </div>
             <p className="text-xs text-muted-foreground">
               Pendientes de asignación
@@ -316,7 +327,7 @@ export default function Metrics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {metrics?.closed_tickets || 0}
+              {filteredMetrics.closed}
             </div>
             <p className="text-xs text-muted-foreground">
               Resueltos exitosamente
@@ -331,7 +342,7 @@ export default function Metrics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metrics?.average_response_time || 0} min
+              {filteredMetrics.avgResponseTime} min
             </div>
             <p className="text-xs text-muted-foreground">
               Tiempo de respuesta

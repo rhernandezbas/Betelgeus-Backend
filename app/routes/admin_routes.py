@@ -829,9 +829,10 @@ def get_metrics():
             TicketResponseMetrics.response_time_minutes.isnot(None)
         ).scalar()
         
-        # Tickets que excedieron el umbral (para SLA)
+        # Tickets que excedieron el umbral Y están abiertos
         overdue_tickets = TicketResponseMetrics.query.filter(
-            TicketResponseMetrics.exceeded_threshold == True
+            TicketResponseMetrics.exceeded_threshold == True,
+            TicketResponseMetrics.is_closed == False
         ).count()
         
         # Distribución por operador - obtener nombres de operadores
