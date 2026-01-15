@@ -176,6 +176,25 @@ class MessageTemplate(db.Model):
         return f'<MessageTemplate template_key: {self.template_key}, template_name: {self.template_name}>'
 
 
+class TicketReassignmentHistory(db.Model):
+    """Historial de reasignaciones de tickets"""
+    __tablename__ = 'ticket_reassignment_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.String(50), nullable=False, index=True)
+    from_operator_id = db.Column(db.Integer)  # Operador anterior (null si era sin asignar)
+    from_operator_name = db.Column(db.String(200))
+    to_operator_id = db.Column(db.Integer)  # Nuevo operador (null si se desasigna)
+    to_operator_name = db.Column(db.String(200))
+    reason = db.Column(db.String(500))  # Razón de la reasignación
+    reassignment_type = db.Column(db.String(50))  # 'auto_unassign', 'manual', 'end_of_shift', etc.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(100))  # 'system', 'admin', username
+    
+    def __repr__(self):
+        return f'<TicketReassignment ticket_id: {self.ticket_id}, from: {self.from_operator_id} to: {self.to_operator_id}>'
+
+
 class User(db.Model):
     """Modelo de usuarios para autenticación"""
     __tablename__ = 'users'

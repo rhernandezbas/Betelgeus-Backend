@@ -1022,12 +1022,38 @@ class TicketManager:
                     if response:
                         resultado["tickets_desasignados"] += 1
                         
-                        # Registrar desasignación en historial
-                        TicketResponseMetricsInterface.add_assignment_to_history(
-                            ticket_id=str(ticket_id),
-                            assigned_to=0,
-                            reason=f"auto_unassign_after_shift_end_{shift_end_time}"
-                        )
+                        # Registrar en el nuevo historial de reasignaciones
+                        from app.interface.reassignment_history import ReassignmentHistoryInterface
+                        ReassignmentHistoryInterface.create({
+                            'ticket_id': str(ticket_id),
+                            'from_operator_id': assigned_to,
+                            'from_operator_name': operator_name,
+                            'to_operator_id': None,
+                            'to_operator_name': 'Sin asignar',
+                            'reason': f'Desasignación automática 1 hora después del fin de turno ({shift_end_time})',
+                            'reassignment_type': 'auto_unassign_after_shift',
+                            'created_by': 'system'
+                        })
+                        
+                        # Enviar mensaje de WhatsApp al operador notificando la desasignación
+                        try:
+                            from app.interface.interfaces import OperatorConfigInterface
+                            operator_config = OperatorConfigInterface.get_by_person_id(assigned_to)
+                            if operator_config and operator_config.whatsapp_number:
+                                from app.services.whatsapp_service import WhatsAppService
+                                whatsapp = WhatsAppService()
+                                
+                                message = f"🔄 *Ticket Desasignado Automáticamente*\n\n"
+                                message += f"📋 Ticket #{ticket_id}\n"
+                                message += f"📝 Asunto: {subject}\n"
+                                message += f"⏰ Tu turno terminó a las {shift_end_time}\n"
+                                message += f"🔄 El ticket ha sido devuelto al pool de tickets sin asignar\n"
+                                message += f"✅ Será reasignado en el próximo turno"
+                                
+                                whatsapp.send_message(operator_config.whatsapp_number, message)
+                                logger.info(f"   📱 Mensaje de desasignación enviado a {operator_name}")
+                        except Exception as e:
+                            logger.warning(f"   ⚠️ No se pudo enviar mensaje de WhatsApp: {e}")
                         
                         logger.info(f"   ✅ Ticket {ticket_id} desasignado de {operator_name}")
                         

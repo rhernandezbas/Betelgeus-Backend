@@ -1153,3 +1153,39 @@ def delete_ticket(ticket_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+@admin_bp.route('/reassignment-history', methods=['GET'])
+def get_reassignment_history():
+    """Get ticket reassignment history with optional filters."""
+    try:
+        from app.interface.reassignment_history import ReassignmentHistoryInterface
+        
+        # Obtener parámetros de filtro
+        ticket_id = request.args.get('ticket_id')
+        operator_id = request.args.get('operator_id')
+        limit = int(request.args.get('limit', 100))
+        
+        # Obtener historial según filtros
+        if ticket_id:
+            history = ReassignmentHistoryInterface.get_by_ticket(ticket_id)
+        elif operator_id:
+            history = ReassignmentHistoryInterface.get_by_operator(int(operator_id), limit)
+        else:
+            history = ReassignmentHistoryInterface.get_recent(limit)
+        
+        # Convertir a diccionarios
+        history_data = [ReassignmentHistoryInterface.to_dict(h) for h in history]
+        
+        return jsonify({
+            'success': True,
+            'history': history_data,
+            'total': len(history_data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting reassignment history: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

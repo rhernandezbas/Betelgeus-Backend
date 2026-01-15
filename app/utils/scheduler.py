@@ -165,12 +165,12 @@ def init_scheduler(app):
         replace_existing=True
     )
     
-    # Agregar job para importar tickets existentes del grupo 4 (cada 10 minutos)
+    # Agregar job para importar tickets existentes del grupo 4 (cada 5 minutos)
     scheduler.add_job(
         func=lambda: requests.post('http://localhost:7842/api/tickets/import_existing'),
-        trigger=IntervalTrigger(minutes=10),
+        trigger=IntervalTrigger(minutes=5),
         id='import_existing_tickets_job',
-        name='Importar tickets existentes del grupo 4 cada 10 minutos',
+        name='Importar tickets existentes del grupo 4 cada 5 minutos',
         replace_existing=True
     )
     
@@ -186,7 +186,7 @@ def init_scheduler(app):
     logger.info("   • Notificaciones de fin de turno cada hora")
     logger.info("   • Desasignación automática cada 40 minutos")
     logger.info("   • Sincronización estado tickets cada 5 minutos")
-    logger.info("   • Importación tickets existentes cada 10 minutos")
+    logger.info("   • Importación tickets existentes cada 5 minutos")
     logger.info("🌎 Zona horaria: America/Argentina/Buenos_Aires")
     logger.info(f"🔧 PID: {os.getpid()}")
     logger.info("="*60)
