@@ -77,6 +77,7 @@ def get_operators():
                     'day_of_week': s.day_of_week,
                     'start_time': s.start_time,
                     'end_time': s.end_time,
+                    'schedule_type': s.schedule_type,
                     'is_active': s.is_active
                 } for s in schedules]
             })
