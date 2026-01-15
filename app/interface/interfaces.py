@@ -574,6 +574,7 @@ class OperatorScheduleInterface(BaseInterface):
                 day_of_week=data.get('day_of_week'),
                 start_time=data.get('start_time'),
                 end_time=data.get('end_time'),
+                schedule_type=data.get('schedule_type', 'alert'),
                 is_active=data.get('is_active', True)
             )
             if BaseInterface.add_item(schedule):
