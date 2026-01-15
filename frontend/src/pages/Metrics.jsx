@@ -202,14 +202,13 @@ export default function Metrics() {
       })
     }
 
-    // Filtrar por estado (usar is_closed como fuente de verdad)
+    // Filtrar por estado (usar is_closed y exceeded_threshold como fuente de verdad)
     if (filters.status === 'Abierto') {
       filtered = filtered.filter(t => t.is_closed === false)
     } else if (filters.status === 'Cerrado') {
       filtered = filtered.filter(t => t.is_closed === true)
-    } else if (filters.status !== 'all' && filters.status !== 'Todos') {
-      // Para otros estados específicos, usar el campo estado
-      filtered = filtered.filter(t => t.estado === filters.status)
+    } else if (filters.status === 'Vencido') {
+      filtered = filtered.filter(t => t.exceeded_threshold === true)
     }
 
     // Filtrar por operador
@@ -273,10 +272,10 @@ export default function Metrics() {
     }
     
     operatorDistribution[operatorId].assigned++
-    if (ticket.estado === 'SUCCESS') {
+    if (ticket.is_closed === true) {
       operatorDistribution[operatorId].completed++
     }
-    if (ticket.exceeded_threshold) {
+    if (ticket.exceeded_threshold === true) {
       operatorDistribution[operatorId].exceeded_threshold++
     }
   })
@@ -291,13 +290,13 @@ export default function Metrics() {
   
   const operatorData = Object.values(operatorDistribution)
   
-  // Calcular métricas dinámicamente basadas en tickets filtrados
+  // Calcular métricas dinámicamente basadas en tickets filtrados (usar is_closed como fuente de verdad)
   const filteredMetrics = {
     total: filteredTickets.length,
-    open: filteredTickets.filter(t => !t.exceeded_threshold && t.estado !== 'SUCCESS').length,
-    closed: filteredTickets.filter(t => t.estado === 'SUCCESS').length,
-    overdue: filteredTickets.filter(t => t.exceeded_threshold).length,
-    avgResponseTime: filteredTickets.length > 0 
+    open: filteredTickets.filter(t => t.is_closed === false).length,
+    closed: filteredTickets.filter(t => t.is_closed === true).length,
+    overdue: filteredTickets.filter(t => t.exceeded_threshold === true).length,
+    avgResponseTime: filteredTickets.filter(t => t.response_time).length > 0 
       ? (filteredTickets.reduce((sum, t) => sum + (t.response_time || 0), 0) / filteredTickets.filter(t => t.response_time).length).toFixed(2)
       : 0
   }
@@ -335,7 +334,7 @@ export default function Metrics() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
               <label className="text-sm font-medium block mb-2">Fecha Inicio</label>
               <input
@@ -363,9 +362,21 @@ export default function Metrics() {
               >
                 <option value="all">Todos</option>
                 <option value="Abierto">Abierto</option>
-                <option value="En Progreso">En Progreso</option>
                 <option value="Cerrado">Cerrado</option>
                 <option value="Vencido">Vencido</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-2">Operador</label>
+              <select
+                value={filters.operator}
+                onChange={(e) => setFilters({ ...filters, operator: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              >
+                <option value="all">Todos</option>
+                {metrics?.operator_distribution?.map(op => (
+                  <option key={op.person_id} value={op.person_id}>{op.name}</option>
+                ))}
               </select>
             </div>
             <div>
