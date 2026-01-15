@@ -19,6 +19,7 @@ class IncidentsDetection(db.Model):
     Prioridad = db.Column(db.String(1000))
     is_created_splynx = db.Column(db.Boolean)
     assigned_to = db.Column(db.Integer)
+    closed_at = db.Column(db.DateTime)  # Fecha de cierre del ticket
 
 
     def __repr__(self):

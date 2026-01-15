@@ -910,6 +910,7 @@ def get_incidents():
         end_date = request.args.get('end_date')
         status = request.args.get('status')
         assigned_to = request.args.get('assigned_to')
+        ticket_status = request.args.get('ticket_status')  # 'open', 'closed', o 'all'
         
         # Construir query base
         query = IncidentsDetection.query
@@ -929,6 +930,12 @@ def get_incidents():
         if assigned_to:
             query = query.filter(IncidentsDetection.assigned_to == int(assigned_to))
         
+        # Filtro de estado abierto/cerrado
+        if ticket_status == 'open':
+            query = query.filter(IncidentsDetection.closed_at.is_(None))
+        elif ticket_status == 'closed':
+            query = query.filter(IncidentsDetection.closed_at.isnot(None))
+        
         # Ordenar por ID descendente (más recientes primero)
         incidents = query.order_by(IncidentsDetection.id.desc()).all()
         
@@ -945,6 +952,8 @@ def get_incidents():
                 'assigned_to': incident.assigned_to,
                 'operator_name': operator_map.get(incident.assigned_to, 'Sin asignar') if incident.assigned_to else 'Sin asignar',
                 'created_at': incident.Fecha_Creacion,
+                'closed_at': incident.closed_at.isoformat() if incident.closed_at else None,
+                'is_closed': incident.closed_at is not None,
                 'updated_at': None,
                 'response_time_minutes': None,
                 'exceeded_threshold': False

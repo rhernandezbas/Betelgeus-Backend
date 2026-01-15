@@ -11,6 +11,7 @@ export default function OperatorView() {
   const [operatorData, setOperatorData] = useState(null)
   const [myTickets, setMyTickets] = useState([])
   const [stats, setStats] = useState(null)
+  const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all'
   const { toast } = useToast()
 
   // Obtener el person_id del operador logueado desde sessionStorage
@@ -42,9 +43,12 @@ export default function OperatorView() {
       )
       setStats(operatorMetrics)
 
-      // Obtener tickets reales asignados al operador
+      // Obtener tickets reales asignados al operador con filtro de estado
       try {
-        const ticketsResponse = await adminApi.getIncidents({ assigned_to: personId })
+        const ticketsResponse = await adminApi.getIncidents({ 
+          assigned_to: personId,
+          ticket_status: ticketFilter
+        })
         const tickets = ticketsResponse.data.incidents || []
         
         // Transformar al formato esperado
@@ -56,10 +60,30 @@ export default function OperatorView() {
           estado: ticket.status_name,
           prioridad: ticket.priority_name,
           created_at: ticket.created_at,
-          assigned_at: ticket.created_at
+          assigned_at: ticket.created_at,
+          is_closed: ticket.is_closed,
+          closed_at: ticket.closed_at
         }))
         
         setMyTickets(formattedTickets)
+        
+        // Calcular métricas localmente
+        const allTicketsResponse = await adminApi.getIncidents({ 
+          assigned_to: personId,
+          ticket_status: 'all'
+        })
+        const allTickets = allTicketsResponse.data.incidents || []
+        
+        const openCount = allTickets.filter(t => !t.is_closed).length
+        const closedCount = allTickets.filter(t => t.is_closed).length
+        const totalCount = allTickets.length
+        
+        setStats({
+          assigned: openCount,
+          completed: closedCount,
+          total: totalCount,
+          sla_percentage: operatorMetrics?.sla_percentage || 100
+        })
       } catch (error) {
         console.error('Error al cargar tickets:', error)
         setMyTickets([])
@@ -81,7 +105,7 @@ export default function OperatorView() {
     // Actualizar cada 30 segundos
     const interval = setInterval(fetchOperatorData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [ticketFilter])
 
   if (loading) {
     return (
@@ -198,7 +222,7 @@ export default function OperatorView() {
             <AlertCircle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{openTickets.length}</div>
+            <div className="text-2xl font-bold text-orange-600">{stats?.assigned || 0}</div>
             <p className="text-xs text-muted-foreground">
               Pendientes de resolver
             </p>
@@ -211,7 +235,7 @@ export default function OperatorView() {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{closedTickets.length}</div>
+            <div className="text-2xl font-bold text-green-600">{stats?.completed || 0}</div>
             <p className="text-xs text-muted-foreground">
               Resueltos exitosamente
             </p>
@@ -233,13 +257,15 @@ export default function OperatorView() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tiempo Promedio</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">SLA Actual</CardTitle>
+            <TrendingUp className={`h-4 w-4 ${(stats?.sla_percentage || 100) >= 90 ? 'text-green-600' : (stats?.sla_percentage || 100) >= 70 ? 'text-yellow-600' : 'text-red-600'}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.avg_response_time || 0} min</div>
+            <div className={`text-2xl font-bold ${(stats?.sla_percentage || 100) >= 90 ? 'text-green-600' : (stats?.sla_percentage || 100) >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+              {(stats?.sla_percentage || 100).toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground">
-              Tiempo de respuesta
+              Cumplimiento de SLA
             </p>
           </CardContent>
         </Card>
@@ -297,8 +323,35 @@ export default function OperatorView() {
       {/* Mis Tickets */}
       <Card>
         <CardHeader>
-          <CardTitle>Mis Tickets Asignados</CardTitle>
-          <CardDescription>Tickets actualmente bajo tu responsabilidad</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Mis Tickets Asignados</CardTitle>
+              <CardDescription>Tickets actualmente bajo tu responsabilidad</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setTicketFilter('open')}
+                variant={ticketFilter === 'open' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Abiertos
+              </Button>
+              <Button
+                onClick={() => setTicketFilter('closed')}
+                variant={ticketFilter === 'closed' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Cerrados
+              </Button>
+              <Button
+                onClick={() => setTicketFilter('all')}
+                variant={ticketFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Todos
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
