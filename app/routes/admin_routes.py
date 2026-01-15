@@ -817,22 +817,20 @@ def get_metrics():
         open_tickets = IncidentsDetection.query.filter(
             IncidentsDetection.Estado.in_(['FAIL', 'PENDING', 'OPEN'])
         ).count()
+        # Tickets cerrados (is_closed=True)
         closed_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.Estado == 'SUCCESS'
-        ).count()
-        in_progress_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.Estado.in_(['IN_PROGRESS', 'WORKING'])
+            IncidentsDetection.is_closed == True
         ).count()
         
-        # Calcular tiempo promedio de respuesta desde ticket_response_metrics
-        avg_response = db.session.query(func.avg(TicketResponseMetrics.response_time_minutes)).filter(
-            TicketResponseMetrics.response_time_minutes.isnot(None)
+        # Calcular tiempo promedio de respuesta desde incidents_detection
+        avg_response = db.session.query(func.avg(IncidentsDetection.response_time_minutes)).filter(
+            IncidentsDetection.response_time_minutes.isnot(None)
         ).scalar()
         
-        # Tickets que excedieron el umbral Y están abiertos
-        overdue_tickets = TicketResponseMetrics.query.filter(
-            TicketResponseMetrics.exceeded_threshold == True,
-            TicketResponseMetrics.is_closed == False
+        # Tickets vencidos (exceeded_threshold=True Y is_closed=False)
+        overdue_tickets = IncidentsDetection.query.filter(
+            IncidentsDetection.exceeded_threshold == True,
+            IncidentsDetection.is_closed == False
         ).count()
         
         # Distribución por operador - obtener nombres de operadores
@@ -852,19 +850,17 @@ def get_metrics():
         
         operator_distribution = []
         for stat in operator_stats:
-            # Contar tickets completados (SUCCESS)
+            # Contar tickets completados (cerrados)
             completed = IncidentsDetection.query.filter(
                 IncidentsDetection.assigned_to == stat.assigned_to,
-                IncidentsDetection.Estado == 'SUCCESS'
+                IncidentsDetection.is_closed == True
             ).count()
             
-            # Calcular SLA: tickets que NO excedieron el umbral
+            # Calcular SLA: tickets que excedieron el umbral
             total_operator_tickets = stat.assigned
-            exceeded = TicketResponseMetrics.query.join(
-                IncidentsDetection, TicketResponseMetrics.ticket_id == IncidentsDetection.Ticket_ID
-            ).filter(
+            exceeded = IncidentsDetection.query.filter(
                 IncidentsDetection.assigned_to == stat.assigned_to,
-                TicketResponseMetrics.exceeded_threshold == True
+                IncidentsDetection.exceeded_threshold == True
             ).count()
             
             # SLA = (total - excedidos) / total * 100
@@ -885,7 +881,6 @@ def get_metrics():
                 'total_tickets': total_tickets,
                 'open_tickets': open_tickets,
                 'closed_tickets': closed_tickets,
-                'in_progress_tickets': in_progress_tickets,
                 'overdue_tickets': overdue_tickets,
                 'average_response_time': round(avg_response, 2) if avg_response else 0,
                 'operator_distribution': operator_distribution
@@ -956,16 +951,9 @@ def get_incidents():
                 'closed_at': incident.closed_at.isoformat() if incident.closed_at else None,
                 'is_closed': incident.is_closed,
                 'updated_at': None,
-                'response_time_minutes': None,
-                'exceeded_threshold': False
+                'response_time_minutes': incident.response_time_minutes,
+                'exceeded_threshold': incident.exceeded_threshold or False
             }
-            
-            # Obtener tiempo de respuesta y exceeded_threshold si existe
-            metric = TicketResponseMetrics.query.filter_by(ticket_id=incident.Ticket_ID).first()
-            if metric:
-                if metric.response_time_minutes:
-                    incident_dict['response_time_minutes'] = metric.response_time_minutes
-                incident_dict['exceeded_threshold'] = metric.exceeded_threshold or False
             
             incidents_data.append(incident_dict)
         
@@ -985,39 +973,22 @@ def get_incidents():
 
 @admin_bp.route('/tickets/<ticket_id>/threshold', methods=['PUT'])
 def update_ticket_threshold(ticket_id):
-    """Update exceeded_threshold status for a ticket. Creates metric if not exists."""
+    """Update exceeded_threshold status for a ticket in incidents_detection."""
     try:
         data = request.get_json()
         exceeded_threshold = data.get('exceeded_threshold', False)
         
-        # Buscar el ticket en ticket_response_metrics
-        metric = TicketResponseMetrics.query.filter_by(ticket_id=ticket_id).first()
+        # Buscar el ticket en incidents_detection
+        incident = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
         
-        if not metric:
-            # Buscar el ticket en incidents_detection
-            incident = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
-            
-            if not incident:
-                return jsonify({
-                    'success': False,
-                    'error': 'Ticket no encontrado'
-                }), 404
-            
-            # Crear la métrica automáticamente
-            from datetime import datetime
-            metric = TicketResponseMetrics(
-                ticket_id=ticket_id,
-                person_id=incident.assigned_to,
-                created_at=incident.Fecha_Creacion if hasattr(incident.Fecha_Creacion, 'strftime') else datetime.now(),
-                exceeded_threshold=exceeded_threshold,
-                is_closed=incident.is_closed,
-                response_time_minutes=0
-            )
-            db.session.add(metric)
-            logger.info(f"✨ Métrica creada automáticamente para ticket {ticket_id}")
-        else:
-            # Actualizar el estado existente
-            metric.exceeded_threshold = exceeded_threshold
+        if not incident:
+            return jsonify({
+                'success': False,
+                'error': 'Ticket no encontrado'
+            }), 404
+        
+        # Actualizar exceeded_threshold
+        incident.exceeded_threshold = exceeded_threshold
         
         db.session.commit()
         

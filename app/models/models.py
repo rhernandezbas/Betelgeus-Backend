@@ -21,7 +21,12 @@ class IncidentsDetection(db.Model):
     assigned_to = db.Column(db.Integer)
     closed_at = db.Column(db.DateTime)  # Fecha de cierre del ticket
     is_closed = db.Column(db.Boolean, default=False)  # Indica si el ticket está cerrado
-
+    
+    # Campos de métricas (unificados desde ticket_response_metrics)
+    exceeded_threshold = db.Column(db.Boolean, default=False)  # Si supera el threshold (>60 min)
+    response_time_minutes = db.Column(db.Integer)  # Tiempo de respuesta en minutos
+    first_alert_sent_at = db.Column(db.DateTime)  # Primera alerta enviada
+    last_alert_sent_at = db.Column(db.DateTime)  # Última alerta enviada
 
     def __repr__(self):
         return f'<Detection id: {self.id}>'

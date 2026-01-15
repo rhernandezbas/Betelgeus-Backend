@@ -1,23 +1,43 @@
 """
 Job para sincronizar el estado de tickets con Splynx
 Verifica si tickets están cerrados en Splynx y actualiza la BD local
+Calcula exceeded_threshold y response_time_minutes
 """
 
 from app.utils.config import db
 from app.models.models import IncidentsDetection
 from app.services.splynx_services import SplynxServices
+from app.utils.config_helper import ConfigHelper
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
 
+def parse_date(date_str):
+    """Parse DD-MM-YYYY HH:MM:SS format to datetime"""
+    if not date_str:
+        return None
+    try:
+        parts = date_str.split(' ')
+        date_parts = parts[0].split('-')
+        time_part = parts[1] if len(parts) > 1 else '00:00:00'
+        year = date_parts[2]
+        month = date_parts[1]
+        day = date_parts[0]
+        return datetime.strptime(f'{year}-{month}-{day} {time_part}', '%Y-%m-%d %H:%M:%S')
+    except:
+        return None
+
 def sync_tickets_status():
     """
     Sincroniza el estado de tickets abiertos con Splynx.
-    Si un ticket está cerrado en Splynx, actualiza closed_at en la BD.
+    Actualiza: is_closed, closed_at, exceeded_threshold, response_time_minutes
     """
     try:
         splynx = SplynxServices()
+        
+        # Obtener threshold desde configuración (default 60 minutos)
+        threshold_minutes = ConfigHelper.get_int('TICKET_ALERT_THRESHOLD_MINUTES', 60)
         
         # Obtener todos los tickets abiertos usando is_closed
         open_tickets = IncidentsDetection.query.filter(
@@ -25,9 +45,10 @@ def sync_tickets_status():
             IncidentsDetection.Ticket_ID.isnot(None)
         ).all()
         
-        logger.info(f"🔄 Sincronizando {len(open_tickets)} tickets abiertos con Splynx...")
+        logger.info(f"🔄 Sincronizando {len(open_tickets)} tickets abiertos con Splynx (threshold: {threshold_minutes} min)...")
         
         closed_count = 0
+        exceeded_count = 0
         
         for ticket in open_tickets:
             try:
@@ -45,6 +66,20 @@ def sync_tickets_status():
                     status_id = splynx_ticket.get('status_id', '')
                     updated_at = splynx_ticket.get('updated_at', '')
                     
+                    # Calcular tiempo de respuesta
+                    created_date = parse_date(ticket.Fecha_Creacion)
+                    if created_date:
+                        now = datetime.now()
+                        response_time = int((now - created_date).total_seconds() / 60)
+                        ticket.response_time_minutes = response_time
+                        
+                        # Verificar si excede el threshold
+                        if response_time > threshold_minutes and not is_closed:
+                            ticket.exceeded_threshold = True
+                            exceeded_count += 1
+                        else:
+                            ticket.exceeded_threshold = False
+                    
                     # Si el ticket está cerrado en Splynx (closed = "1")
                     if is_closed:
                         # Usar updated_at de Splynx como fecha de cierre
@@ -58,6 +93,7 @@ def sync_tickets_status():
                         
                         # Marcar como cerrado
                         ticket.is_closed = True
+                        ticket.exceeded_threshold = False  # Los cerrados no están vencidos
                         
                         # Actualizar estado basado en status_id
                         if status_id == '3':
@@ -70,19 +106,20 @@ def sync_tickets_status():
                     else:
                         # Ticket aún abierto
                         ticket.is_closed = False
-                        logger.debug(f"ℹ️  Ticket {ticket_id} aún abierto (closed=0, is_closed=False, status_id={status_id})")
+                        logger.debug(f"ℹ️  Ticket {ticket_id} aún abierto (closed=0, response_time={ticket.response_time_minutes}min, exceeded={ticket.exceeded_threshold})")
                         
             except Exception as e:
                 logger.error(f"❌ Error al sincronizar ticket {ticket.Ticket_ID}: {e}")
                 continue
         
         db.session.commit()
-        logger.info(f"✅ Sincronización completada: {closed_count} tickets cerrados")
+        logger.info(f"✅ Sincronización completada: {closed_count} tickets cerrados, {exceeded_count} tickets vencidos")
         
         return {
             'success': True,
             'total_checked': len(open_tickets),
-            'closed_count': closed_count
+            'closed_count': closed_count,
+            'exceeded_count': exceeded_count
         }
         
     except Exception as e:
