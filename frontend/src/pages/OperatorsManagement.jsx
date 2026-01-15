@@ -4,18 +4,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, UserPlus, Edit2, Trash2, Clock, Bell, Calendar, Phone, User, Pause, Play } from 'lucide-react'
+import { 
+  RefreshCw, UserPlus, Edit2, Trash2, Clock, Bell, BellOff, 
+  Phone, Pause, Play, UserCheck, UserX, Plus, Save, X, Briefcase
+} from 'lucide-react'
 
 export default function OperatorsManagement() {
   const [operators, setOperators] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingOperator, setEditingOperator] = useState(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [activeScheduleTab, setActiveScheduleTab] = useState('assignment')
   const [newSchedule, setNewSchedule] = useState(null)
   const [editingSchedule, setEditingSchedule] = useState(null)
   const { toast } = useToast()
@@ -50,13 +52,100 @@ export default function OperatorsManagement() {
     fetchOperators()
   }, [])
 
-  const handleUpdateOperator = async (operatorData) => {
+  const handlePauseOperator = async (personId, name) => {
+    const reason = prompt(`¿Por qué deseas pausar a ${name}?`)
+    if (!reason) return
+
     try {
-      await adminApi.updateOperator(operatorData.person_id, operatorData)
+      await adminApi.pauseOperator(personId, {
+        reason,
+        paused_by: 'admin',
+        performed_by: 'admin'
+      })
+      toast({
+        title: 'Operador Pausado',
+        description: `${name} ha sido pausado exitosamente`
+      })
+      fetchOperators()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al pausar operador',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleResumeOperator = async (personId, name) => {
+    try {
+      await adminApi.resumeOperator(personId)
+      toast({
+        title: 'Operador Reanudado',
+        description: `${name} ha sido reanudado exitosamente`
+      })
+      fetchOperators()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al reanudar operador',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleToggleNotifications = async (personId, name, currentState) => {
+    try {
+      await adminApi.updateOperator(personId, {
+        notifications_enabled: !currentState,
+        performed_by: 'admin'
+      })
+      toast({
+        title: 'Notificaciones Actualizadas',
+        description: `Notificaciones ${!currentState ? 'activadas' : 'desactivadas'} para ${name}`
+      })
+      fetchOperators()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al actualizar notificaciones',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleToggleActive = async (personId, name, currentState) => {
+    if (!confirm(`¿Estás seguro de ${currentState ? 'desactivar' : 'activar'} a ${name}?`)) return
+
+    try {
+      await adminApi.updateOperator(personId, {
+        is_active: !currentState,
+        performed_by: 'admin'
+      })
+      toast({
+        title: 'Estado Actualizado',
+        description: `${name} ha sido ${!currentState ? 'activado' : 'desactivado'}`
+      })
+      fetchOperators()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al actualizar estado',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleSaveOperator = async () => {
+    try {
+      await adminApi.updateOperator(editingOperator.person_id, {
+        whatsapp_number: editingOperator.whatsapp_number,
+        performed_by: 'admin'
+      })
       toast({
         title: 'Operador Actualizado',
-        description: 'Los datos del operador se actualizaron correctamente'
+        description: 'Teléfono actualizado exitosamente'
       })
+      setEditDialogOpen(false)
       setEditingOperator(null)
       fetchOperators()
     } catch (error) {
@@ -68,63 +157,59 @@ export default function OperatorsManagement() {
     }
   }
 
-  const handleTogglePause = async (operator) => {
+  const handleAddSchedule = (personId) => {
+    setNewSchedule({
+      person_id: personId,
+      day_of_week: 0,
+      start_time: activeScheduleTab === 'assignment' ? '08:00' : '10:00',
+      end_time: activeScheduleTab === 'assignment' ? '17:00' : '18:00',
+      schedule_type: activeScheduleTab,
+      is_active: true
+    })
+  }
+
+  const handleSaveNewSchedule = async () => {
     try {
-      if (operator.is_paused) {
-        await adminApi.resumeOperator(operator.person_id)
-        toast({
-          title: 'Operador Reactivado',
-          description: `${operator.name} ha sido reactivado`
-        })
-      } else {
-        const reason = prompt('Motivo de la pausa:')
-        if (reason) {
-          await adminApi.pauseOperator(operator.person_id, reason)
-          toast({
-            title: 'Operador Pausado',
-            description: `${operator.name} ha sido pausado`
-          })
-        }
-      }
+      await adminApi.createSchedule({
+        ...newSchedule,
+        schedule_type: activeScheduleTab,
+        performed_by: 'admin'
+      })
+      toast({
+        title: 'Horario Creado',
+        description: `Horario de ${activeScheduleTab === 'assignment' ? 'asignación' : 'alertas'} creado exitosamente`
+      })
+      setNewSchedule(null)
       fetchOperators()
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Error al cambiar estado del operador',
+        description: 'Error al crear horario',
         variant: 'destructive'
       })
     }
   }
 
-  const handleSaveSchedule = async (scheduleData, scheduleType) => {
+  const handleEditSchedule = (schedule) => {
+    setEditingSchedule({ ...schedule })
+  }
+
+  const handleSaveSchedule = async () => {
     try {
-      const data = {
-        ...scheduleData,
-        schedule_type: scheduleType,
+      await adminApi.updateSchedule(editingSchedule.id, {
+        ...editingSchedule,
         performed_by: 'admin'
-      }
-      
-      if (editingSchedule) {
-        await adminApi.updateSchedule(editingSchedule.id, data)
-        toast({
-          title: 'Horario Actualizado',
-          description: `Horario de ${scheduleType === 'assignment' ? 'asignación' : 'alertas'} actualizado`
-        })
-      } else {
-        await adminApi.createSchedule(data)
-        toast({
-          title: 'Horario Creado',
-          description: `Horario de ${scheduleType === 'assignment' ? 'asignación' : 'alertas'} creado`
-        })
-      }
-      
-      setNewSchedule(null)
+      })
+      toast({
+        title: 'Horario Actualizado',
+        description: 'El horario ha sido actualizado exitosamente'
+      })
       setEditingSchedule(null)
       fetchOperators()
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Error al guardar horario',
+        description: 'Error al actualizar horario',
         variant: 'destructive'
       })
     }
@@ -137,7 +222,7 @@ export default function OperatorsManagement() {
       await adminApi.deleteSchedule(scheduleId)
       toast({
         title: 'Horario Eliminado',
-        description: 'El horario ha sido eliminado'
+        description: 'El horario ha sido eliminado exitosamente'
       })
       fetchOperators()
     } catch (error) {
@@ -153,16 +238,19 @@ export default function OperatorsManagement() {
     return daysOfWeek.find(d => d.value === day)?.label || 'Desconocido'
   }
 
-  const groupSchedulesByDay = (schedules, type) => {
-    const filtered = schedules.filter(s => s.schedule_type === type)
-    const grouped = {}
-    filtered.forEach(schedule => {
-      if (!grouped[schedule.day_of_week]) {
-        grouped[schedule.day_of_week] = []
+  const filterSchedulesByType = (schedules) => {
+    return schedules.filter(s => s.schedule_type === activeScheduleTab)
+  }
+
+  const groupSchedulesByDay = (schedules) => {
+    const filtered = filterSchedulesByType(schedules)
+    return filtered.reduce((acc, schedule) => {
+      if (!acc[schedule.day_of_week]) {
+        acc[schedule.day_of_week] = []
       }
-      grouped[schedule.day_of_week].push(schedule)
-    })
-    return grouped
+      acc[schedule.day_of_week].push(schedule)
+      return acc
+    }, {})
   }
 
   if (loading) {
@@ -175,272 +263,450 @@ export default function OperatorsManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Gestión de Operadores</h1>
-          <p className="text-muted-foreground">Administra operadores y sus horarios de asignación y alertas</p>
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de Operadores</h1>
+          <p className="text-muted-foreground">
+            Administra operadores, horarios de asignación y alertas
+          </p>
         </div>
-        <Button onClick={fetchOperators}>
+        <Button onClick={fetchOperators} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
           Actualizar
         </Button>
       </div>
 
-      <div className="space-y-4">
-        {operators.map(operator => (
-          <Card key={operator.person_id} className={
-            operator.is_paused ? 'border-orange-300' :
-            operator.is_active ? 'border-green-300' :
-            'border-gray-300'
-          }>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <User className="h-6 w-6" />
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {operator.name}
-                      {operator.is_paused && <Badge variant="outline" className="bg-orange-100 text-orange-800">Pausado</Badge>}
-                      {operator.is_active && !operator.is_paused && <Badge variant="outline" className="bg-green-100 text-green-800">Activo</Badge>}
-                      {!operator.is_active && <Badge variant="outline" className="bg-gray-100 text-gray-800">Inactivo</Badge>}
-                    </CardTitle>
-                    <CardDescription>
-                      Person ID: {operator.person_id} | WhatsApp: {operator.whatsapp_number || 'No configurado'} | Tickets: {operator.ticket_count || 0}
-                    </CardDescription>
+      {/* Main Tabs */}
+      <Tabs defaultValue="operators" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="operators">
+            <UserCheck className="h-4 w-4 mr-2" />
+            Operadores
+          </TabsTrigger>
+          <TabsTrigger value="schedules">
+            <Clock className="h-4 w-4 mr-2" />
+            Horarios
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Operators Tab */}
+        <TabsContent value="operators" className="space-y-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+            {operators.map((operator) => (
+              <Card key={operator.person_id} className={operator.is_paused ? 'border-orange-300' : ''}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="flex items-center gap-2">
+                        {operator.name}
+                        {operator.is_paused && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Pausado
+                          </span>
+                        )}
+                        {!operator.is_active && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Inactivo
+                          </span>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        ID: {operator.person_id} • WhatsApp: {operator.whatsapp_number || 'No configurado'}
+                      </CardDescription>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTogglePause(operator)}
-                  >
-                    {operator.is_paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                  </Button>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setEditingOperator(operator)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Editar Operador</DialogTitle>
-                        <DialogDescription>Actualiza los datos del operador</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Nombre</Label>
-                          <Input
-                            value={editingOperator?.name || ''}
-                            onChange={(e) => setEditingOperator({...editingOperator, name: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>Teléfono WhatsApp</Label>
-                          <Input
-                            value={editingOperator?.whatsapp_number || ''}
-                            onChange={(e) => setEditingOperator({...editingOperator, whatsapp_number: e.target.value})}
-                            placeholder="+1234567890"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={editingOperator?.is_active || false}
-                            onCheckedChange={(checked) => setEditingOperator({...editingOperator, is_active: checked})}
-                          />
-                          <Label>Operador Activo</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={editingOperator?.notifications_enabled || false}
-                            onCheckedChange={(checked) => setEditingOperator({...editingOperator, notifications_enabled: checked})}
-                          />
-                          <Label>Notificaciones Habilitadas</Label>
-                        </div>
-                        <Button onClick={() => handleUpdateOperator(editingOperator)}>
-                          Guardar Cambios
-                        </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-primary">{operator.ticket_count}</div>
+                      <div className="text-xs text-muted-foreground">Asignados</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {operator.schedules?.length || 0}
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
+                      <div className="text-xs text-muted-foreground">Horarios</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-orange-600">
+                        {operator.notifications_enabled ? (
+                          <Bell className="h-6 w-6 mx-auto" />
+                        ) : (
+                          <BellOff className="h-6 w-6 mx-auto" />
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Notif.</div>
+                    </div>
+                  </div>
+
+                  {/* Pause Reason */}
+                  {operator.is_paused && operator.paused_reason && (
+                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                      <p className="text-sm text-orange-800">
+                        <strong>Razón:</strong> {operator.paused_reason}
+                      </p>
+                      {operator.paused_at && (
+                        <p className="text-xs text-orange-600 mt-1">
+                          Pausado: {new Date(operator.paused_at).toLocaleString('es-AR')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    {operator.is_paused ? (
+                      <Button
+                        onClick={() => handleResumeOperator(operator.person_id, operator.name)}
+                        size="sm"
+                        variant="default"
+                        className="flex-1"
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Reanudar
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handlePauseOperator(operator.person_id, operator.name)}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <Pause className="h-4 w-4 mr-2" />
+                        Pausar
+                      </Button>
+                    )}
+
+                    <Button
+                      onClick={() => handleToggleNotifications(operator.person_id, operator.name, operator.notifications_enabled)}
+                      size="sm"
+                      variant="outline"
+                      title={operator.notifications_enabled ? 'Silenciar notificaciones' : 'Activar notificaciones'}
+                    >
+                      {operator.notifications_enabled ? (
+                        <BellOff className="h-4 w-4" />
+                      ) : (
+                        <Bell className="h-4 w-4" />
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        setEditingOperator(operator)
+                        setEditDialogOpen(true)
+                      }}
+                      size="sm"
+                      variant="outline"
+                      title="Editar teléfono"
+                    >
+                      <Phone className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      onClick={() => handleToggleActive(operator.person_id, operator.name, operator.is_active)}
+                      size="sm"
+                      variant={operator.is_active ? "destructive" : "default"}
+                      title={operator.is_active ? 'Desactivar' : 'Activar'}
+                    >
+                      {operator.is_active ? (
+                        <UserX className="h-4 w-4" />
+                      ) : (
+                        <UserCheck className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Summary Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumen</CardTitle>
+              <CardDescription>Estado general de operadores</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="assignment" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="assignment" className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Horarios de Asignación
-                  </TabsTrigger>
-                  <TabsTrigger value="alert" className="flex items-center gap-2">
-                    <Bell className="h-4 w-4" />
-                    Horarios de Alertas
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="assignment" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">Horarios para asignación de tickets</p>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" onClick={() => setNewSchedule({ person_id: operator.person_id, type: 'assignment' })}>
-                          <Clock className="h-4 w-4 mr-2" />
-                          Agregar Horario
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Nuevo Horario de Asignación</DialogTitle>
-                          <DialogDescription>Define cuándo este operador puede recibir tickets</DialogDescription>
-                        </DialogHeader>
-                        <ScheduleForm
-                          schedule={newSchedule}
-                          onChange={setNewSchedule}
-                          onSave={(data) => handleSaveSchedule(data, 'assignment')}
-                          onCancel={() => setNewSchedule(null)}
-                          daysOfWeek={daysOfWeek}
-                        />
-                      </DialogContent>
-                    </Dialog>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold">{operators.length}</div>
+                  <div className="text-sm text-muted-foreground">Total</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {operators.filter(o => o.is_active && !o.is_paused).length}
                   </div>
-                  <ScheduleList
-                    schedules={groupSchedulesByDay(operator.schedules || [], 'assignment')}
-                    daysOfWeek={daysOfWeek}
-                    onEdit={(schedule) => setEditingSchedule(schedule)}
-                    onDelete={handleDeleteSchedule}
-                  />
-                </TabsContent>
-
-                <TabsContent value="alert" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">Horarios para recibir notificaciones WhatsApp</p>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" onClick={() => setNewSchedule({ person_id: operator.person_id, type: 'alert' })}>
-                          <Bell className="h-4 w-4 mr-2" />
-                          Agregar Horario
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Nuevo Horario de Alertas</DialogTitle>
-                          <DialogDescription>Define cuándo este operador recibe notificaciones</DialogDescription>
-                        </DialogHeader>
-                        <ScheduleForm
-                          schedule={newSchedule}
-                          onChange={setNewSchedule}
-                          onSave={(data) => handleSaveSchedule(data, 'alert')}
-                          onCancel={() => setNewSchedule(null)}
-                          daysOfWeek={daysOfWeek}
-                        />
-                      </DialogContent>
-                    </Dialog>
+                  <div className="text-sm text-muted-foreground">Activos</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-600">
+                    {operators.filter(o => o.is_paused).length}
                   </div>
-                  <ScheduleList
-                    schedules={groupSchedulesByDay(operator.schedules || [], 'alert')}
-                    daysOfWeek={daysOfWeek}
-                    onEdit={(schedule) => setEditingSchedule(schedule)}
-                    onDelete={handleDeleteSchedule}
-                  />
-                </TabsContent>
-              </Tabs>
+                  <div className="text-sm text-muted-foreground">Pausados</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-gray-600">
+                    {operators.filter(o => !o.is_active).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Inactivos</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
+        </TabsContent>
 
-function ScheduleForm({ schedule, onChange, onSave, onCancel, daysOfWeek }) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label>Día de la Semana</Label>
-        <Select
-          value={schedule?.day_of_week?.toString()}
-          onValueChange={(value) => onChange({...schedule, day_of_week: parseInt(value)})}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona un día" />
-          </SelectTrigger>
-          <SelectContent>
-            {daysOfWeek.map(day => (
-              <SelectItem key={day.value} value={day.value.toString()}>
-                {day.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Hora de Inicio</Label>
-        <Input
-          type="time"
-          value={schedule?.start_time || ''}
-          onChange={(e) => onChange({...schedule, start_time: e.target.value})}
-        />
-      </div>
-      <div>
-        <Label>Hora de Fin</Label>
-        <Input
-          type="time"
-          value={schedule?.end_time || ''}
-          onChange={(e) => onChange({...schedule, end_time: e.target.value})}
-        />
-      </div>
-      <div className="flex gap-2">
-        <Button onClick={() => onSave(schedule)}>Guardar</Button>
-        <Button variant="outline" onClick={onCancel}>Cancelar</Button>
-      </div>
-    </div>
-  )
-}
+        {/* Schedules Tab */}
+        <TabsContent value="schedules" className="space-y-4">
+          {/* Schedule Type Tabs */}
+          <div className="flex gap-2 border-b">
+            <button
+              onClick={() => setActiveScheduleTab('assignment')}
+              className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                activeScheduleTab === 'assignment'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Briefcase className="h-4 w-4" />
+              Horarios de Asignación
+            </button>
+            <button
+              onClick={() => setActiveScheduleTab('alert')}
+              className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                activeScheduleTab === 'alert'
+                  ? 'border-b-2 border-orange-600 text-orange-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Bell className="h-4 w-4" />
+              Horarios de Alertas
+            </button>
+          </div>
 
-function ScheduleList({ schedules, daysOfWeek, onEdit, onDelete }) {
-  if (Object.keys(schedules).length === 0) {
-    return (
-      <p className="text-center text-muted-foreground py-4">
-        No hay horarios configurados
-      </p>
-    )
-  }
+          {/* Info Card */}
+          <Card className={activeScheduleTab === 'assignment' ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}>
+            <CardContent className="pt-6">
+              <p className={`text-sm ${activeScheduleTab === 'assignment' ? 'text-blue-800' : 'text-orange-800'}`}>
+                {activeScheduleTab === 'assignment' ? (
+                  <>
+                    <strong>Horarios de Asignación:</strong> Define los horarios en los que el operador puede recibir asignaciones de tickets. 
+                    Durante estos horarios, el sistema asignará automáticamente tickets nuevos al operador.
+                  </>
+                ) : (
+                  <>
+                    <strong>Horarios de Alertas:</strong> Define los horarios en los que el operador recibirá 
+                    notificaciones de WhatsApp sobre tickets vencidos o que requieren atención urgente.
+                  </>
+                )}
+              </p>
+            </CardContent>
+          </Card>
 
-  return (
-    <div className="space-y-2">
-      {daysOfWeek.map(day => {
-        const daySchedules = schedules[day.value] || []
-        return (
-          <div key={day.value} className="flex items-center justify-between py-2 border-b last:border-0">
-            <span className="font-medium text-sm w-32">{day.label}</span>
-            <div className="flex-1">
-              {daySchedules.length > 0 ? (
-                <div className="flex gap-2 flex-wrap">
-                  {daySchedules.map(schedule => (
-                    <div key={schedule.id} className="flex items-center gap-1">
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                        {schedule.start_time} - {schedule.end_time}
-                      </Badge>
+          {/* Schedules Grid */}
+          <div className="grid gap-6">
+            {operators.map((operator) => {
+              const groupedSchedules = groupSchedulesByDay(operator.schedules || [])
+              const isAddingSchedule = newSchedule?.person_id === operator.person_id
+              const scheduleCount = filterSchedulesByType(operator.schedules || []).length
+              
+              return (
+                <Card key={operator.person_id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Clock className="h-5 w-5" />
+                          {operator.name}
+                        </CardTitle>
+                        <CardDescription>
+                          {scheduleCount} horario{scheduleCount !== 1 ? 's' : ''} de {activeScheduleTab === 'assignment' ? 'asignación' : 'alertas'} configurado{scheduleCount !== 1 ? 's' : ''}
+                        </CardDescription>
+                      </div>
                       <Button
-                        variant="ghost"
+                        onClick={() => handleAddSchedule(operator.person_id)}
                         size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => onDelete(schedule.id)}
+                        disabled={isAddingSchedule}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Horario
                       </Button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">Sin horario</span>
-              )}
-            </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* New Schedule Form */}
+                    {isAddingSchedule && (
+                      <div className={`mb-4 p-4 border-2 rounded-lg ${
+                        activeScheduleTab === 'assignment' ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50'
+                      }`}>
+                        <h4 className={`font-medium mb-3 ${activeScheduleTab === 'assignment' ? 'text-blue-900' : 'text-orange-900'}`}>
+                          Nuevo Horario de {activeScheduleTab === 'assignment' ? 'Asignación' : 'Alertas'}
+                        </h4>
+                        <div className="grid grid-cols-4 gap-3">
+                          <div>
+                            <label className="text-sm font-medium block mb-1">Día</label>
+                            <select
+                              value={newSchedule.day_of_week}
+                              onChange={(e) => setNewSchedule({ ...newSchedule, day_of_week: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 border rounded-md text-sm"
+                            >
+                              {daysOfWeek.map(day => (
+                                <option key={day.value} value={day.value}>{day.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium block mb-1">Inicio</label>
+                            <input
+                              type="time"
+                              value={newSchedule.start_time}
+                              onChange={(e) => setNewSchedule({ ...newSchedule, start_time: e.target.value })}
+                              className="w-full px-3 py-2 border rounded-md text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium block mb-1">Fin</label>
+                            <input
+                              type="time"
+                              value={newSchedule.end_time}
+                              onChange={(e) => setNewSchedule({ ...newSchedule, end_time: e.target.value })}
+                              className="w-full px-3 py-2 border rounded-md text-sm"
+                            />
+                          </div>
+                          <div className="flex items-end gap-2">
+                            <Button onClick={handleSaveNewSchedule} size="sm" className="flex-1">
+                              <Save className="h-4 w-4 mr-1" />
+                              Guardar
+                            </Button>
+                            <Button onClick={() => setNewSchedule(null)} size="sm" variant="outline">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Schedules by Day */}
+                    <div className="space-y-3">
+                      {daysOfWeek.map(day => {
+                        const daySchedules = groupedSchedules[day.value] || []
+                        if (daySchedules.length === 0) return null
+
+                        return (
+                          <div key={day.value} className="border-b pb-3 last:border-0">
+                            <h4 className="font-medium text-sm mb-2">{day.label}</h4>
+                            <div className="space-y-2">
+                              {daySchedules.map(schedule => (
+                                <div key={schedule.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                  {editingSchedule?.id === schedule.id ? (
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <input
+                                        type="time"
+                                        value={editingSchedule.start_time}
+                                        onChange={(e) => setEditingSchedule({ ...editingSchedule, start_time: e.target.value })}
+                                        className="px-2 py-1 border rounded text-sm"
+                                      />
+                                      <span>-</span>
+                                      <input
+                                        type="time"
+                                        value={editingSchedule.end_time}
+                                        onChange={(e) => setEditingSchedule({ ...editingSchedule, end_time: e.target.value })}
+                                        className="px-2 py-1 border rounded text-sm"
+                                      />
+                                      <Button onClick={handleSaveSchedule} size="sm" variant="default">
+                                        <Save className="h-3 w-3" />
+                                      </Button>
+                                      <Button onClick={() => setEditingSchedule(null)} size="sm" variant="outline">
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span className="text-sm">
+                                        {schedule.start_time} - {schedule.end_time}
+                                      </span>
+                                      <div className="flex gap-1">
+                                        <Button
+                                          onClick={() => handleEditSchedule(schedule)}
+                                          size="sm"
+                                          variant="ghost"
+                                        >
+                                          <Edit2 className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          onClick={() => handleDeleteSchedule(schedule.id)}
+                                          size="sm"
+                                          variant="ghost"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {Object.keys(groupedSchedules).length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          No hay horarios de {activeScheduleTab === 'assignment' ? 'asignación' : 'alertas'} configurados
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
-        )
-      })}
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit Operator Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Operador</DialogTitle>
+            <DialogDescription>
+              Actualiza el número de WhatsApp del operador
+            </DialogDescription>
+          </DialogHeader>
+          {editingOperator && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Nombre</Label>
+                <Input
+                  id="name"
+                  value={editingOperator.name}
+                  disabled
+                  className="bg-gray-100"
+                />
+              </div>
+              <div>
+                <Label htmlFor="whatsapp">Número de WhatsApp</Label>
+                <Input
+                  id="whatsapp"
+                  type="tel"
+                  value={editingOperator.whatsapp_number || ''}
+                  onChange={(e) => setEditingOperator({ ...editingOperator, whatsapp_number: e.target.value })}
+                  placeholder="+54 9 11 1234-5678"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveOperator}>
+                  Guardar Cambios
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

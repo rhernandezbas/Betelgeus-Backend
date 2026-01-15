@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
-import SchedulesDual from './pages/SchedulesDual'
+import OperatorsManagement from './pages/OperatorsManagement'
 import Configuration from './pages/Configuration'
 import AuditLogs from './pages/AuditLogs'
 import Messages from './pages/Messages'
@@ -30,7 +30,7 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<Dashboard />} />
-          <Route path="operators-management" element={<SchedulesDual />} />
+          <Route path="operators-management" element={<OperatorsManagement />} />
           <Route path="configuration" element={<Configuration />} />
           <Route path="messages" element={<Messages />} />
           <Route path="metrics" element={<Metrics />} />
