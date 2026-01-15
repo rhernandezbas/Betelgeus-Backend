@@ -139,12 +139,15 @@ export default function Metrics() {
   }
 
   const operatorData = metrics?.operator_distribution || []
-  const statusData = [
-    { name: 'Abiertos', value: metrics?.open_tickets || 0 },
-    { name: 'En Progreso', value: metrics?.in_progress_tickets || 0 },
-    { name: 'Cerrados', value: metrics?.closed_tickets || 0 },
-    { name: 'Vencidos', value: metrics?.overdue_tickets || 0 }
+  
+  // Filtrar solo estados con valores > 0 para el gráfico
+  const allStatusData = [
+    { name: 'Cerrados', value: metrics?.closed_tickets || 0, color: '#00C49F' },
+    { name: 'Abiertos', value: metrics?.open_tickets || 0, color: '#FF8042' },
+    { name: 'Vencidos', value: metrics?.overdue_tickets || 0, color: '#FFBB28' },
+    { name: 'En Progreso', value: metrics?.in_progress_tickets || 0, color: '#0088FE' }
   ]
+  const statusData = allStatusData.filter(item => item.value > 0)
 
   return (
     <div className="space-y-6">
@@ -235,9 +238,9 @@ export default function Metrics() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredTickets.length}</div>
+            <div className="text-2xl font-bold">{metrics?.total_tickets || 0}</div>
             <p className="text-xs text-muted-foreground">
-              En el período seleccionado
+              En el sistema
             </p>
           </CardContent>
         </Card>
@@ -249,7 +252,7 @@ export default function Metrics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {filteredTickets.filter(t => t.estado === 'Abierto').length}
+              {metrics?.open_tickets || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Pendientes de asignación
@@ -264,7 +267,7 @@ export default function Metrics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {filteredTickets.filter(t => t.estado === 'Cerrado').length}
+              {metrics?.closed_tickets || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Resueltos exitosamente
