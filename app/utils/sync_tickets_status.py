@@ -37,7 +37,7 @@ def sync_tickets_status():
                     continue
                 
                 # Consultar ticket en Splynx
-                splynx_ticket = splynx.get_ticket(ticket_id)
+                splynx_ticket = splynx.get_ticket_data_status(ticket_id)
                 
                 if splynx_ticket:
                     # Usar el campo 'closed' de la respuesta de Splynx
