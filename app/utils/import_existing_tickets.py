@@ -60,7 +60,8 @@ def import_existing_tickets_from_splynx():
                 subject = ticket.get('subject', 'Sin asunto')
                 status_id = ticket.get('status_id', '1')
                 priority_id = ticket.get('priority_id', '2')
-                assigned_to = ticket.get('assigned_to', None)
+                # IMPORTANTE: La API de Splynx usa 'assign_to' no 'assigned_to'
+                assigned_to = ticket.get('assign_to', None) or ticket.get('assigned_to', None)
                 created_at = ticket.get('created_at', '')
                 closed = ticket.get('closed', '0')
                 

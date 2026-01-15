@@ -65,6 +65,15 @@ def sync_tickets_status():
                     is_closed = splynx_ticket.get('closed', '0') == '1'
                     status_id = splynx_ticket.get('status_id', '')
                     updated_at = splynx_ticket.get('updated_at', '')
+                    # IMPORTANTE: La API de Splynx usa 'assign_to' no 'assigned_to'
+                    assigned_to_splynx = splynx_ticket.get('assign_to', None) or splynx_ticket.get('assigned_to', None)
+                    
+                    # Sincronizar assigned_to desde Splynx
+                    if assigned_to_splynx:
+                        # Convertir a int si no es None
+                        new_assigned_to = int(assigned_to_splynx) if assigned_to_splynx else None
+                    else:
+                        new_assigned_to = None
                     
                     # Calcular tiempo de respuesta
                     created_date = parse_date(ticket.Fecha_Creacion)
