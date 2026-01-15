@@ -5,7 +5,7 @@ Verifica si tickets están cerrados en Splynx y actualiza la BD local
 
 from app.utils.config import db
 from app.models.models import IncidentsDetection
-from app.utils.splynx_api import SplynxAPI
+from app.services.splynx_services import SplynxServices
 from datetime import datetime
 import logging
 
@@ -17,7 +17,7 @@ def sync_tickets_status():
     Si un ticket está cerrado en Splynx, actualiza closed_at en la BD.
     """
     try:
-        splynx = SplynxAPI()
+        splynx = SplynxServices()
         
         # Obtener todos los tickets que no tienen closed_at (tickets abiertos en nuestra BD)
         open_tickets = IncidentsDetection.query.filter(
@@ -56,6 +56,9 @@ def sync_tickets_status():
                         else:
                             ticket.closed_at = datetime.now()
                         
+                        # Marcar como cerrado
+                        ticket.is_closed = True
+                        
                         # Actualizar estado basado en status_id
                         if status_id == '3':
                             ticket.Estado = 'SUCCESS'
@@ -63,10 +66,11 @@ def sync_tickets_status():
                             ticket.Estado = 'CLOSED'
                         
                         closed_count += 1
-                        logger.info(f"✅ Ticket {ticket_id} marcado como cerrado (closed=1, status_id={status_id}, updated_at={updated_at})")
+                        logger.info(f"✅ Ticket {ticket_id} marcado como cerrado (closed=1, is_closed=True, status_id={status_id}, updated_at={updated_at})")
                     else:
-                        # Ticket aún abierto, actualizar status_id si cambió
-                        logger.debug(f"ℹ️  Ticket {ticket_id} aún abierto (closed=0, status_id={status_id})")
+                        # Ticket aún abierto
+                        ticket.is_closed = False
+                        logger.debug(f"ℹ️  Ticket {ticket_id} aún abierto (closed=0, is_closed=False, status_id={status_id})")
                         
             except Exception as e:
                 logger.error(f"❌ Error al sincronizar ticket {ticket.Ticket_ID}: {e}")

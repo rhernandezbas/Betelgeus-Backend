@@ -953,7 +953,7 @@ def get_incidents():
                 'operator_name': operator_map.get(incident.assigned_to, 'Sin asignar') if incident.assigned_to else 'Sin asignar',
                 'created_at': incident.Fecha_Creacion,
                 'closed_at': incident.closed_at.isoformat() if incident.closed_at else None,
-                'is_closed': incident.closed_at is not None,
+                'is_closed': getattr(incident, 'is_closed', False) or (incident.closed_at is not None),
                 'updated_at': None,
                 'response_time_minutes': None,
                 'exceeded_threshold': False

@@ -20,6 +20,7 @@ class IncidentsDetection(db.Model):
     is_created_splynx = db.Column(db.Boolean)
     assigned_to = db.Column(db.Integer)
     closed_at = db.Column(db.DateTime)  # Fecha de cierre del ticket
+    is_closed = db.Column(db.Boolean, default=False)  # Indica si el ticket está cerrado
 
 
     def __repr__(self):
@@ -56,6 +57,7 @@ class TicketResponseMetrics(db.Model):
     alert_count = db.Column(db.Integer, default=0)
     resolved_at = db.Column(db.DateTime)
     exceeded_threshold = db.Column(db.Boolean, default=True)
+    is_closed = db.Column(db.Boolean, default=False)  # Indica si el ticket está cerrado
     auditorado = db.Column(db.Boolean, default=False)  # Campo manual para auditoría
     assignment_history = db.Column(db.JSON, default=list)  # Historial de asignaciones [{assigned_to, assigned_at, reason}]
     
