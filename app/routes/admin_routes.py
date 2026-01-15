@@ -803,6 +803,77 @@ def get_operator_metrics(person_id):
         }), 500
 
 
+@admin_bp.route('/metrics', methods=['GET'])
+def get_metrics():
+    """Get general system metrics."""
+    try:
+        from app.models.models import IncidentsDetection
+        
+        # Obtener estadísticas generales
+        total_tickets = IncidentsDetection.query.count()
+        open_tickets = IncidentsDetection.query.filter(
+            IncidentsDetection.status_name.in_(['Open', 'Abierto', 'New', 'Nuevo'])
+        ).count()
+        closed_tickets = IncidentsDetection.query.filter(
+            IncidentsDetection.status_name.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto'])
+        ).count()
+        in_progress_tickets = IncidentsDetection.query.filter(
+            IncidentsDetection.status_name.in_(['In Progress', 'En Progreso', 'Working', 'Trabajando'])
+        ).count()
+        
+        # Calcular tiempo promedio de respuesta
+        avg_response = db.session.query(func.avg(TicketResponseMetrics.response_time_minutes)).filter(
+            TicketResponseMetrics.response_time_minutes.isnot(None)
+        ).scalar()
+        
+        # Distribución por operador
+        operator_stats = db.session.query(
+            IncidentsDetection.assigned_to,
+            IncidentsDetection.operator_name,
+            func.count(IncidentsDetection.id).label('assigned'),
+            func.sum(
+                func.case(
+                    (IncidentsDetection.status_name.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto']), 1),
+                    else_=0
+                )
+            ).label('completed')
+        ).filter(
+            IncidentsDetection.assigned_to.isnot(None)
+        ).group_by(
+            IncidentsDetection.assigned_to,
+            IncidentsDetection.operator_name
+        ).all()
+        
+        operator_distribution = []
+        for stat in operator_stats:
+            operator_distribution.append({
+                'person_id': stat.assigned_to,
+                'name': stat.operator_name or f'Operador {stat.assigned_to}',
+                'assigned': stat.assigned,
+                'completed': stat.completed or 0
+            })
+        
+        return jsonify({
+            'success': True,
+            'metrics': {
+                'total_tickets': total_tickets,
+                'open_tickets': open_tickets,
+                'closed_tickets': closed_tickets,
+                'in_progress_tickets': in_progress_tickets,
+                'overdue_tickets': 0,  # Calcular si es necesario
+                'average_response_time': round(avg_response, 2) if avg_response else 0,
+                'operator_distribution': operator_distribution
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting metrics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @admin_bp.route('/incidents', methods=['GET'])
 def get_incidents():
     """Get all incidents/tickets with optional filters."""
