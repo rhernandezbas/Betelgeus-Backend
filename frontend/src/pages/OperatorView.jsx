@@ -16,10 +16,19 @@ export default function OperatorView() {
   // Obtener el person_id del operador logueado desde sessionStorage
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
   const personId = currentUser.person_id
+  const username = currentUser.username
 
   const fetchOperatorData = async () => {
     try {
       setLoading(true)
+      
+      if (!personId) {
+        // Si no tiene person_id, mostrar mensaje informativo
+        setOperatorData({ name: username || 'Usuario', person_id: null })
+        setStats({ assigned: 0, completed: 0, sla_percentage: 100 })
+        setMyTickets([])
+        return
+      }
       
       // Obtener datos del operador
       const operatorsResponse = await adminApi.getOperators()
@@ -71,13 +80,11 @@ export default function OperatorView() {
   }
 
   useEffect(() => {
-    if (personId) {
-      fetchOperatorData()
-      // Actualizar cada 30 segundos
-      const interval = setInterval(fetchOperatorData, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [personId])
+    fetchOperatorData()
+    // Actualizar cada 30 segundos
+    const interval = setInterval(fetchOperatorData, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (loading) {
     return (
@@ -116,6 +123,29 @@ export default function OperatorView() {
           Actualizar
         </Button>
       </div>
+
+      {/* Mensaje informativo si no tiene person_id */}
+      {!personId && (
+        <Card className="border-blue-300 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-900">
+              <AlertCircle className="h-5 w-5" />
+              Configuración Pendiente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-blue-800">
+              Tu cuenta de operador aún no está vinculada a un operador del sistema. 
+              Por favor, contacta al administrador para que te asigne un <strong>person_id</strong> y 
+              puedas ver tus tickets asignados y métricas de rendimiento.
+            </p>
+            <p className="text-blue-800 mt-2">
+              Mientras tanto, puedes acceder a la página de <strong>Métricas</strong> para ver 
+              información general del sistema.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Estado del Operador */}
       <Card className={
