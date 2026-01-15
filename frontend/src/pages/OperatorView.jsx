@@ -261,7 +261,9 @@ export default function OperatorView() {
           {operatorData.schedules && operatorData.schedules.length > 0 ? (
             <div className="space-y-2">
               {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day, index) => {
-                const daySchedules = operatorData.schedules.filter(s => s.day_of_week === index)
+                const daySchedules = operatorData.schedules.filter(s => 
+                  s.day_of_week === index && s.schedule_type === 'work'
+                )
                 return (
                   <div key={day} className="flex items-center justify-between py-2 border-b last:border-0">
                     <span className="font-medium text-sm w-32">{day}</span>
