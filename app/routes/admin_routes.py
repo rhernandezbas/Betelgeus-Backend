@@ -834,13 +834,7 @@ def get_metrics():
         # Distribución por operador
         operator_stats = db.session.query(
             IncidentsDetection.assigned_to,
-            func.count(IncidentsDetection.id).label('assigned'),
-            func.sum(
-                func.case(
-                    (IncidentsDetection.Estado.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto']), 1),
-                    else_=0
-                )
-            ).label('completed')
+            func.count(IncidentsDetection.id).label('assigned')
         ).filter(
             IncidentsDetection.assigned_to.isnot(None)
         ).group_by(
@@ -849,11 +843,17 @@ def get_metrics():
         
         operator_distribution = []
         for stat in operator_stats:
+            # Contar tickets completados por operador
+            completed = IncidentsDetection.query.filter(
+                IncidentsDetection.assigned_to == stat.assigned_to,
+                IncidentsDetection.Estado.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto'])
+            ).count()
+            
             operator_distribution.append({
                 'person_id': stat.assigned_to,
                 'name': operator_map.get(stat.assigned_to, f'Operador {stat.assigned_to}'),
                 'assigned': stat.assigned,
-                'completed': stat.completed or 0
+                'completed': completed
             })
         
         return jsonify({
