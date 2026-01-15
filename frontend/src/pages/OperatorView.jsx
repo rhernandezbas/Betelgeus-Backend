@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar } from 'lucide-react'
+import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, LogOut, Menu, X, Bell, BellOff } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 export default function OperatorView() {
@@ -12,7 +13,10 @@ export default function OperatorView() {
   const [myTickets, setMyTickets] = useState([])
   const [stats, setStats] = useState(null)
   const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all'
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   // Obtener el person_id del operador logueado desde sessionStorage
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
@@ -35,6 +39,11 @@ export default function OperatorView() {
       const operatorsResponse = await adminApi.getOperators()
       const operator = operatorsResponse.data.operators.find(op => op.person_id === personId)
       setOperatorData(operator)
+      
+      // Sincronizar estado de notificaciones desde BD
+      if (operator) {
+        setNotificationsEnabled(operator.notifications_enabled !== false)
+      }
 
       // Obtener métricas del operador del mes actual
       const now = new Date()
@@ -129,6 +138,36 @@ export default function OperatorView() {
     }
   }
 
+  const handleLogout = () => {
+    sessionStorage.clear()
+    toast({
+      title: 'Sesión cerrada',
+      description: 'Has cerrado sesión exitosamente'
+    })
+    navigate('/login')
+  }
+
+  const handleToggleNotifications = async () => {
+    try {
+      const newState = !notificationsEnabled
+      await adminApi.updateOperatorConfig(personId, {
+        notifications_enabled: newState
+      })
+      setNotificationsEnabled(newState)
+      toast({
+        title: newState ? 'Notificaciones activadas' : 'Notificaciones desactivadas',
+        description: newState ? 'Recibirás alertas de WhatsApp' : 'No recibirás alertas de WhatsApp'
+      })
+      fetchOperatorData()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo cambiar el estado de notificaciones',
+        variant: 'destructive'
+      })
+    }
+  }
+
   useEffect(() => {
     fetchOperatorData()
     // Actualizar cada 30 segundos
@@ -158,9 +197,11 @@ export default function OperatorView() {
   const openTickets = myTickets.filter(t => t.estado === 'Abierto' || t.estado === 'En Progreso')
   const closedTickets = myTickets.filter(t => t.estado === 'Cerrado')
 
+  const overdueTickets = myTickets.filter(t => t.exceeded_threshold && !t.is_closed)
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header con menú desplegable */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mi Panel de Operador</h1>
@@ -168,10 +209,54 @@ export default function OperatorView() {
             Bienvenido, {operatorData.name}
           </p>
         </div>
-        <Button onClick={fetchOperatorData} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={fetchOperatorData} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+          
+          {/* Menú desplegable */}
+          <div className="relative">
+            <Button
+              onClick={() => setMenuOpen(!menuOpen)}
+              variant="outline"
+              size="sm"
+            >
+              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
+            
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border z-50">
+                <div className="py-2">
+                  <button
+                    onClick={handleToggleNotifications}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    {notificationsEnabled ? (
+                      <>
+                        <Bell className="h-4 w-4 text-green-600" />
+                        <span>Notificaciones: Activas</span>
+                      </>
+                    ) : (
+                      <>
+                        <BellOff className="h-4 w-4 text-gray-600" />
+                        <span>Notificaciones: Inactivas</span>
+                      </>
+                    )}
+                  </button>
+                  <div className="border-t my-1"></div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-red-600"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Cerrar Sesión</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Mensaje informativo si no tiene person_id */}
@@ -226,10 +311,10 @@ export default function OperatorView() {
             <div>
               <p className="text-sm text-muted-foreground mb-1">Notificaciones WhatsApp</p>
               <p className="text-lg font-semibold">
-                {operatorData.whatsapp_enabled ? (
+                {notificationsEnabled ? (
                   <span className="text-green-600">✅ Habilitadas</span>
                 ) : (
-                  <span className="text-gray-600">🔕 Deshabilitadas</span>
+                  <span className="text-red-600">🔕 Deshabilitadas</span>
                 )}
               </p>
             </div>
@@ -242,6 +327,37 @@ export default function OperatorView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tickets Vencidos - Alerta */}
+      {overdueTickets.length > 0 && (
+        <Card className="border-red-300 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <AlertCircle className="h-5 w-5" />
+              ⚠️ Tickets Vencidos Asignados a Ti
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-800 mb-3">
+              Tienes <strong>{overdueTickets.length}</strong> ticket(s) que han excedido el tiempo de respuesta esperado.
+            </p>
+            <div className="space-y-2">
+              {overdueTickets.slice(0, 5).map(ticket => (
+                <div key={ticket.id} className="bg-white p-2 rounded border border-red-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs text-red-700">#{ticket.ticket_id}</span>
+                    <span className="text-xs text-red-600">{ticket.prioridad}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 truncate">{ticket.asunto}</p>
+                </div>
+              ))}
+              {overdueTickets.length > 5 && (
+                <p className="text-xs text-red-600 text-center">+ {overdueTickets.length - 5} más</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPIs del Operador */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
