@@ -432,6 +432,7 @@ class TicketResponseMetricsInterface(BaseInterface):
             metric = TicketResponseMetricsInterface.get_by_ticket_id(ticket_id)
             if metric:
                 metric.resolved_at = datetime.now()
+                metric.is_closed = True
             return BaseInterface.commit_changes()
         except Exception as e:
             logger.error(f"Error marking ticket as resolved: {str(e)}")
@@ -448,9 +449,9 @@ class TicketResponseMetricsInterface(BaseInterface):
     
     @staticmethod
     def get_unresolved_metrics() -> List[TicketResponseMetrics]:
-        """Get all unresolved ticket metrics."""
+        """Get all unresolved ticket metrics using is_closed."""
         try:
-            return TicketResponseMetrics.query.filter_by(resolved_at=None).all()
+            return TicketResponseMetrics.query.filter_by(is_closed=False).all()
         except SQLAlchemyError as e:
             logger.error(f"Error getting unresolved metrics: {str(e)}")
             return []

@@ -19,9 +19,9 @@ def sync_tickets_status():
     try:
         splynx = SplynxServices()
         
-        # Obtener todos los tickets que no tienen closed_at (tickets abiertos en nuestra BD)
+        # Obtener todos los tickets abiertos usando is_closed
         open_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.closed_at.is_(None),
+            IncidentsDetection.is_closed == False,
             IncidentsDetection.Ticket_ID.isnot(None)
         ).all()
         

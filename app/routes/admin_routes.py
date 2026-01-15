@@ -684,7 +684,7 @@ def get_dashboard_stats():
             operator = OperatorConfigInterface.get_by_person_id(tracker.person_id)
             if operator:
                 metrics = TicketResponseMetricsInterface.get_metrics_by_person(tracker.person_id)
-                unresolved = [m for m in metrics if not m.resolved_at]
+                unresolved = [m for m in metrics if not m.is_closed]
                 
                 operator_stats.append({
                     'person_id': tracker.person_id,
@@ -756,7 +756,7 @@ def get_operator_metrics(person_id):
         ).all()
         
         total_tickets = len(metrics)
-        resolved_tickets = len([m for m in metrics if m.resolved_at])
+        resolved_tickets = len([m for m in metrics if m.is_closed])
         unresolved_tickets = total_tickets - resolved_tickets
         exceeded_threshold = len([m for m in metrics if m.exceeded_threshold])
         
@@ -769,7 +769,7 @@ def get_operator_metrics(person_id):
             if date_key not in daily_stats:
                 daily_stats[date_key] = {'total': 0, 'resolved': 0, 'exceeded': 0}
             daily_stats[date_key]['total'] += 1
-            if metric.resolved_at:
+            if metric.is_closed:
                 daily_stats[date_key]['resolved'] += 1
             if metric.exceeded_threshold:
                 daily_stats[date_key]['exceeded'] += 1
@@ -930,11 +930,11 @@ def get_incidents():
         if assigned_to:
             query = query.filter(IncidentsDetection.assigned_to == int(assigned_to))
         
-        # Filtro de estado abierto/cerrado
+        # Filtro de estado abierto/cerrado usando is_closed
         if ticket_status == 'open':
-            query = query.filter(IncidentsDetection.closed_at.is_(None))
+            query = query.filter(IncidentsDetection.is_closed == False)
         elif ticket_status == 'closed':
-            query = query.filter(IncidentsDetection.closed_at.isnot(None))
+            query = query.filter(IncidentsDetection.is_closed == True)
         
         # Ordenar por ID descendente (más recientes primero)
         incidents = query.order_by(IncidentsDetection.id.desc()).all()
@@ -953,7 +953,7 @@ def get_incidents():
                 'operator_name': operator_map.get(incident.assigned_to, 'Sin asignar') if incident.assigned_to else 'Sin asignar',
                 'created_at': incident.Fecha_Creacion,
                 'closed_at': incident.closed_at.isoformat() if incident.closed_at else None,
-                'is_closed': getattr(incident, 'is_closed', False) or (incident.closed_at is not None),
+                'is_closed': incident.is_closed,
                 'updated_at': None,
                 'response_time_minutes': None,
                 'exceeded_threshold': False
