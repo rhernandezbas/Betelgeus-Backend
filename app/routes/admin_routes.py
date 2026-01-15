@@ -9,8 +9,7 @@ from app.interface.interfaces import (
     SystemConfigInterface,
     AuditLogInterface,
     AssignmentTrackerInterface,
-    TicketResponseMetricsInterface,
-    IncidentsDetectionInterface
+    TicketResponseMetricsInterface
 )
 from app.interface.message_templates import MessageTemplateInterface
 from app.utils.logger import get_logger
