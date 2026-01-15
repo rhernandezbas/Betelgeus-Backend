@@ -8,7 +8,7 @@ import { RefreshCw, Clock, Plus, Edit, Trash2, Save, X, Briefcase, Bell } from '
 export default function SchedulesDual() {
   const [operators, setOperators] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('work') // 'work' o 'alert'
+  const [activeTab, setActiveTab] = useState('assignment') // 'assignment' o 'alert'
   const [editingSchedule, setEditingSchedule] = useState(null)
   const [newSchedule, setNewSchedule] = useState(null)
   const { toast } = useToast()
@@ -47,8 +47,8 @@ export default function SchedulesDual() {
     setNewSchedule({
       person_id: personId,
       day_of_week: 0,
-      start_time: activeTab === 'work' ? '08:00' : '10:00',
-      end_time: activeTab === 'work' ? '17:00' : '18:00',
+      start_time: activeTab === 'assignment' ? '08:00' : '10:00',
+      end_time: activeTab === 'assignment' ? '17:00' : '18:00',
       schedule_type: activeTab,
       is_active: true
     })
@@ -66,7 +66,7 @@ export default function SchedulesDual() {
       await adminApi.createSchedule(scheduleData)
       toast({
         title: 'Horario Creado',
-        description: `Horario de ${activeTab === 'work' ? 'trabajo' : 'alertas'} creado exitosamente`
+        description: `Horario de ${activeTab === 'assignment' ? 'asignación' : 'alertas'} creado exitosamente`
       })
       setNewSchedule(null)
       fetchOperators()
@@ -178,15 +178,15 @@ export default function SchedulesDual() {
       {/* Tabs */}
       <div className="flex gap-2 border-b">
         <button
-          onClick={() => setActiveTab('work')}
+          onClick={() => setActiveTab('assignment')}
           className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
-            activeTab === 'work'
+            activeTab === 'assignment'
               ? 'border-b-2 border-blue-600 text-blue-600'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           <Briefcase className="h-4 w-4" />
-          Horarios de Trabajo
+          Horarios de Asignación
         </button>
         <button
           onClick={() => setActiveTab('alert')}
@@ -202,13 +202,13 @@ export default function SchedulesDual() {
       </div>
 
       {/* Info Card */}
-      <Card className={activeTab === 'work' ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}>
+      <Card className={activeTab === 'assignment' ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}>
         <CardContent className="pt-6">
-          <p className={`text-sm ${activeTab === 'work' ? 'text-blue-800' : 'text-orange-800'}`}>
-            {activeTab === 'work' ? (
+          <p className={`text-sm ${activeTab === 'assignment' ? 'text-blue-800' : 'text-orange-800'}`}>
+            {activeTab === 'assignment' ? (
               <>
-                <strong>Horarios de Trabajo:</strong> Define los horarios laborales de cada operador. 
-                Durante estos horarios, el operador estará disponible para recibir asignaciones de tickets.
+                <strong>Horarios de Asignación:</strong> Define los horarios en los que el operador puede recibir asignaciones de tickets. 
+                Durante estos horarios, el sistema asignará automáticamente tickets nuevos al operador.
               </>
             ) : (
               <>
@@ -237,7 +237,7 @@ export default function SchedulesDual() {
                       {operator.name}
                     </CardTitle>
                     <CardDescription>
-                      {scheduleCount} horario{scheduleCount !== 1 ? 's' : ''} de {activeTab === 'work' ? 'trabajo' : 'alertas'} configurado{scheduleCount !== 1 ? 's' : ''}
+                      {scheduleCount} horario{scheduleCount !== 1 ? 's' : ''} de {activeTab === 'assignment' ? 'asignación' : 'alertas'} configurado{scheduleCount !== 1 ? 's' : ''}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
@@ -267,10 +267,10 @@ export default function SchedulesDual() {
                 {/* New Schedule Form */}
                 {isAddingSchedule && (
                   <div className={`mb-4 p-4 border-2 rounded-lg ${
-                    activeTab === 'work' ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50'
+                    activeTab === 'assignment' ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50'
                   }`}>
-                    <h4 className={`font-medium mb-3 ${activeTab === 'work' ? 'text-blue-900' : 'text-orange-900'}`}>
-                      Nuevo Horario de {activeTab === 'work' ? 'Trabajo' : 'Alertas'}
+                    <h4 className={`font-medium mb-3 ${activeTab === 'assignment' ? 'text-blue-900' : 'text-orange-900'}`}>
+                      Nuevo Horario de {activeTab === 'assignment' ? 'Asignación' : 'Alertas'}
                     </h4>
                     <div className="grid grid-cols-4 gap-3">
                       <div>
@@ -376,7 +376,7 @@ export default function SchedulesDual() {
                   })}
                   {Object.keys(groupedSchedules).length === 0 && (
                     <div className="text-center py-8 text-gray-500">
-                      No hay horarios de {activeTab === 'work' ? 'trabajo' : 'alertas'} configurados
+                      No hay horarios de {activeTab === 'assignment' ? 'asignación' : 'alertas'} configurados
                     </div>
                   )}
                 </div>

@@ -84,7 +84,7 @@ class OperatorConfig(db.Model):
 
 
 class OperatorSchedule(db.Model):
-    """Horarios de trabajo y alertas de operadores."""
+    """Horarios de asignación de tickets y alertas de operadores."""
     __tablename__ = 'operator_schedule'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -92,7 +92,7 @@ class OperatorSchedule(db.Model):
     day_of_week = db.Column(db.Integer, nullable=False)  # 0=Lunes, 6=Domingo
     start_time = db.Column(db.String(5), nullable=False)  # Formato HH:MM
     end_time = db.Column(db.String(5), nullable=False)    # Formato HH:MM
-    schedule_type = db.Column(db.String(20), nullable=False, default='work')  # 'work' o 'alert'
+    schedule_type = db.Column(db.String(20), nullable=False, default='assignment')  # 'assignment' (asignación de tickets) o 'alert' (notificaciones WhatsApp)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())

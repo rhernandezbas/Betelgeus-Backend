@@ -42,31 +42,28 @@ export default function OperatorView() {
       )
       setStats(operatorMetrics)
 
-      // Aquí deberías obtener los tickets asignados al operador
-      // Por ahora usamos datos de ejemplo
-      const mockTickets = [
-        {
-          id: 1,
-          ticket_id: 'T-001',
-          cliente: 'Cliente A',
-          asunto: 'Problema de conexión',
-          estado: 'En Progreso',
-          prioridad: 'Alta',
-          created_at: '2026-01-14T10:00:00',
-          assigned_at: '2026-01-14T10:05:00'
-        },
-        {
-          id: 2,
-          ticket_id: 'T-002',
-          cliente: 'Cliente B',
-          asunto: 'Consulta técnica',
-          estado: 'Abierto',
-          prioridad: 'Media',
-          created_at: '2026-01-14T11:00:00',
-          assigned_at: '2026-01-14T11:02:00'
-        }
-      ]
-      setMyTickets(mockTickets)
+      // Obtener tickets reales asignados al operador
+      try {
+        const ticketsResponse = await adminApi.getIncidents({ assigned_to: personId })
+        const tickets = ticketsResponse.data.incidents || []
+        
+        // Transformar al formato esperado
+        const formattedTickets = tickets.map(ticket => ({
+          id: ticket.id,
+          ticket_id: ticket.ticket_id,
+          cliente: ticket.customer_name,
+          asunto: ticket.subject,
+          estado: ticket.status_name,
+          prioridad: ticket.priority_name,
+          created_at: ticket.created_at,
+          assigned_at: ticket.created_at
+        }))
+        
+        setMyTickets(formattedTickets)
+      } catch (error) {
+        console.error('Error al cargar tickets:', error)
+        setMyTickets([])
+      }
 
     } catch (error) {
       toast({
@@ -262,7 +259,7 @@ export default function OperatorView() {
             <div className="space-y-2">
               {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day, index) => {
                 const daySchedules = operatorData.schedules.filter(s => 
-                  s.day_of_week === index && s.schedule_type === 'work'
+                  s.day_of_week === index && s.schedule_type === 'assignment'
                 )
                 return (
                   <div key={day} className="flex items-center justify-between py-2 border-b last:border-0">
