@@ -107,7 +107,7 @@ class ScheduleHelper:
     def get_available_operators(operator_ids: List[int], schedule_type: str = 'assignment',
                                current_time: Optional[datetime] = None) -> List[int]:
         """
-        Obtiene lista de operadores disponibles según sus horarios de BD
+        Obtiene lista de operadores disponibles según sus horarios de BD y estado de pausa
         
         Args:
             operator_ids: Lista de IDs de operadores a verificar
@@ -115,11 +115,33 @@ class ScheduleHelper:
             current_time: Hora actual (si es None, usa la hora actual de Argentina)
             
         Returns:
-            Lista de IDs de operadores disponibles
+            Lista de IDs de operadores disponibles (sin pausas y en horario)
         """
+        from app.models.models import OperatorConfig
+        
         available = []
         
         for person_id in operator_ids:
+            # Verificar estado de pausa del operador
+            operator = OperatorConfig.query.filter_by(person_id=person_id).first()
+            
+            if operator:
+                # Si está pausado totalmente, saltarlo
+                if operator.is_paused:
+                    logger.debug(f"Operador {person_id} saltado: is_paused=True")
+                    continue
+                
+                # Si es schedule_type='assignment' y tiene assignment_paused, saltarlo
+                if schedule_type == 'assignment' and operator.assignment_paused:
+                    logger.debug(f"Operador {person_id} saltado: assignment_paused=True")
+                    continue
+                
+                # Si no está activo, saltarlo
+                if not operator.is_active:
+                    logger.debug(f"Operador {person_id} saltado: is_active=False")
+                    continue
+            
+            # Verificar horario
             if ScheduleHelper.is_operator_available(person_id, schedule_type, current_time):
                 available.append(person_id)
         

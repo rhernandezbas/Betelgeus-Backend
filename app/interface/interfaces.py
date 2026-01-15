@@ -279,15 +279,31 @@ class AssignmentTrackerInterface(BaseInterface):
     
     @staticmethod
     def get_person_with_least_tickets(person_ids: List[int]) -> int:
-        """Get person ID with least assigned tickets."""
+        """Get person ID with least assigned tickets, filtering out paused operators."""
+        from app.models.models import OperatorConfig
+        
         try:
             trackers = {}
             for person_id in person_ids:
+                # Verificar estado de pausa del operador
+                operator = OperatorConfig.query.filter_by(person_id=person_id).first()
+                
+                # Saltar operadores pausados o inactivos
+                if operator:
+                    if operator.is_paused or operator.assignment_paused or not operator.is_active:
+                        logger.debug(f"Operador {person_id} saltado en round-robin: paused={operator.is_paused}, assignment_paused={operator.assignment_paused}, active={operator.is_active}")
+                        continue
+                
                 tracker = AssignmentTrackerInterface.get_by_person_id(person_id)
                 if tracker:
                     trackers[person_id] = tracker.ticket_count
                 else:
                     trackers[person_id] = 0
+            
+            # Si todos están pausados, usar el primero como fallback
+            if not trackers:
+                logger.warning(f"⚠️ Todos los operadores están pausados. Usando fallback: {person_ids[0]}")
+                return person_ids[0]
             
             return min(trackers, key=trackers.get)
         except Exception as e:
