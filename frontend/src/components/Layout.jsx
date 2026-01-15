@@ -13,7 +13,8 @@ import {
   UserCog,
   ScrollText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowRightLeft
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Usuarios', href: '/users', icon: UserCog },
   { name: 'Configuración', href: '/configuration', icon: Settings },
   { name: 'Auditoría', href: '/audit', icon: FileText },
+  { name: 'Historial de Reasignaciones', href: '/reassignment-history', icon: ArrowRightLeft },
   { name: 'Logs del Sistema', href: '/logs', icon: ScrollText },
 ]
 

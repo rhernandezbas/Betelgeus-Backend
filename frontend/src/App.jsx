@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import OperatorsManagement from './pages/OperatorsManagement'
 import Configuration from './pages/Configuration'
 import AuditLogs from './pages/AuditLogs'
+import ReassignmentHistory from './pages/ReassignmentHistory'
 import Messages from './pages/Messages'
 import Metrics from './pages/Metrics'
 import Users from './pages/Users'
@@ -38,6 +39,7 @@ function App() {
           <Route path="logs" element={<LogsViewer />} />
           <Route path="users" element={<Users />} />
           <Route path="audit" element={<AuditLogs />} />
+          <Route path="reassignment-history" element={<ReassignmentHistory />} />
         </Route>
 
         {/* Ruta protegida para operadores */}

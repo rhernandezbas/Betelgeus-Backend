@@ -32,6 +32,7 @@ export const adminApi = {
   updateConfig: (key, data) => api.put(`/api/admin/config/${key}`, data),
   
   getAuditLogs: (params) => api.get('/api/admin/audit', { params }),
+  getReassignmentHistory: (params) => api.get('/api/admin/reassignment-history', { params }),
   
   getDashboardStats: () => api.get('/api/admin/dashboard/stats'),
   getOperatorMetrics: (personId, days) => api.get(`/api/admin/metrics/operator/${personId}`, { params: { days } }),
