@@ -81,7 +81,7 @@ def get_logs():
             'error': str(e)
         }), 500
 
-@logs_bp.route('/stats', methods=['GET'])
+@logs_bp.route('/logs/stats', methods=['GET'])
 def get_log_stats():
     """Get log statistics"""
     try:
@@ -136,7 +136,7 @@ def get_log_stats():
             'error': str(e)
         }), 500
 
-@logs_bp.route('/clear', methods=['POST'])
+@logs_bp.route('/logs/clear', methods=['POST'])
 def clear_logs():
     """Clear log file (admin only)"""
     try:
