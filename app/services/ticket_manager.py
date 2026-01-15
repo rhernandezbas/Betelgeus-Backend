@@ -453,13 +453,13 @@ class TicketManager:
                         # Si no hay updated_at, usar now
                         updated_at = now
                     
-                    # Calcular tiempo transcurrido desde creación hasta última actualización
-                    time_elapsed = updated_at - created_at
-                    minutes_elapsed = int(time_elapsed.total_seconds() / 60)
-                    
                     # Calcular tiempo desde última actualización hasta ahora
                     time_since_update = now - updated_at
                     minutes_since_update = int(time_since_update.total_seconds() / 60)
+                    
+                    # Calcular tiempo total desde creación (para métricas)
+                    time_since_creation = now - created_at
+                    minutes_elapsed = int(time_since_creation.total_seconds() / 60)
                     
                     # Verificar si el ticket está en estado OutHouse (ID 6)
                     from app.utils.constants import OUTHOUSE_STATUS_ID
@@ -469,17 +469,11 @@ class TicketManager:
                             logger.info(f"🏠 Ticket {ticket_id} en estado OutHouse - No se alerta hasta {OUTHOUSE_NO_ALERT_MINUTES} minutos ({minutes_since_update} min transcurridos)")
                             continue
                     
-                    # Verificar si supera el umbral de 45 minutos desde creación hasta última actualización
-                    if minutes_elapsed >= threshold_minutes:
-                        
-                        # Si fue actualizado hace menos de 45 minutos, NO alertar
+                    # Verificar si supera el umbral desde la última actualización
+                    # Un ticket está vencido si no ha sido actualizado en X minutos
+                    if minutes_since_update >= threshold_minutes:
                         should_alert = True
-                        if minutes_since_update < TICKET_UPDATE_THRESHOLD_MINUTES:
-                            should_alert = False
-                            logger.info(f"⏭️  Ticket {ticket_id} actualizado hace {minutes_since_update} min - NO se alerta")
-                        
-                        if not should_alert:
-                            continue
+                        logger.info(f"⚠️  Ticket {ticket_id} vencido: {minutes_since_update} min sin actualización (umbral: {threshold_minutes} min, tiempo total: {minutes_elapsed} min)")
                         resultado["tickets_vencidos"] += 1
                         
                         # Verificar si ya fue notificado recientemente (ANTI-SPAM)
