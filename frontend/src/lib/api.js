@@ -40,6 +40,10 @@ export const adminApi = {
   getIncidents: (params) => api.get('/api/admin/incidents', { params }),
   updateTicketThreshold: (ticketId, data) => api.put(`/api/admin/tickets/${ticketId}/threshold`, data),
   deleteTicket: (ticketId) => api.delete(`/api/admin/tickets/${ticketId}`),
+  
+  requestTicketAudit: (ticketId, data) => api.post(`/api/admin/tickets/${ticketId}/request-audit`, data),
+  getAuditTickets: () => api.get('/api/admin/audit-tickets'),
+  markAuditNotified: (ticketId) => api.post(`/api/admin/tickets/${ticketId}/mark-audit-notified`),
 };
 
 export const systemApi = {

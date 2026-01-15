@@ -27,6 +27,12 @@ class IncidentsDetection(db.Model):
     response_time_minutes = db.Column(db.Integer)  # Tiempo de respuesta en minutos
     first_alert_sent_at = db.Column(db.DateTime)  # Primera alerta enviada
     last_alert_sent_at = db.Column(db.DateTime)  # Última alerta enviada
+    
+    # Campos de auditoría
+    audit_requested = db.Column(db.Boolean, default=False)  # Operador solicitó auditoría
+    audit_notified = db.Column(db.Boolean, default=False)  # Admin fue notificado
+    audit_requested_at = db.Column(db.DateTime)  # Fecha de solicitud de auditoría
+    audit_requested_by = db.Column(db.Integer)  # Person ID del operador que solicitó
 
     def __repr__(self):
         return f'<Detection id: {self.id}>'

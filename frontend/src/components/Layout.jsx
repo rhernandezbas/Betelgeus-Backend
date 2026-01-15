@@ -14,7 +14,8 @@ import {
   ScrollText,
   ChevronLeft,
   ChevronRight,
-  ArrowRightLeft
+  ArrowRightLeft,
+  FileSearch
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Usuarios', href: '/users', icon: UserCog },
   { name: 'Configuración', href: '/configuration', icon: Settings },
   { name: 'Auditoría', href: '/audit', icon: FileText },
+  { name: 'Auditoría de Tickets', href: '/audit-tickets', icon: FileSearch },
   { name: 'Historial de Reasignaciones', href: '/reassignment-history', icon: ArrowRightLeft },
   { name: 'Logs del Sistema', href: '/logs', icon: ScrollText },
 ]

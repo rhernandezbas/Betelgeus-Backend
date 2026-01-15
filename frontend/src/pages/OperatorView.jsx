@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, Bell, BellOff } from 'lucide-react'
+import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, Bell, BellOff, FileSearch } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 export default function OperatorView() {
@@ -13,6 +13,8 @@ export default function OperatorView() {
   const [stats, setStats] = useState(null)
   const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all', 'overdue'
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [auditModalOpen, setAuditModalOpen] = useState(false)
+  const [selectedTicketForAudit, setSelectedTicketForAudit] = useState(null)
   const { toast } = useToast()
 
   // Obtener el person_id del operador logueado desde sessionStorage
@@ -38,8 +40,11 @@ export default function OperatorView() {
       setOperatorData(operator)
       
       // Sincronizar estado de notificaciones desde BD
+      // Notificaciones activas si: notifications_enabled=true Y está en horario de trabajo
       if (operator) {
-        setNotificationsEnabled(operator.notifications_enabled !== false)
+        const manuallyEnabled = operator.notifications_enabled !== false
+        const inWorkingHours = operator.is_active && !operator.is_paused
+        setNotificationsEnabled(manuallyEnabled && inWorkingHours)
       }
 
       // Obtener métricas del operador del mes actual
@@ -147,6 +152,31 @@ export default function OperatorView() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRequestAudit = async () => {
+    if (!selectedTicketForAudit) return
+    
+    try {
+      await adminApi.requestTicketAudit(selectedTicketForAudit.ticket_id, {
+        person_id: personId
+      })
+      
+      toast({
+        title: '✅ Auditoría solicitada',
+        description: `El ticket #${selectedTicketForAudit.ticket_id} ha sido marcado para auditoría. El admin será notificado.`
+      })
+      
+      setAuditModalOpen(false)
+      setSelectedTicketForAudit(null)
+      fetchOperatorData()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo solicitar la auditoría',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -281,12 +311,27 @@ export default function OperatorView() {
             </p>
             <div className="space-y-2">
               {overdueTickets.slice(0, 5).map(ticket => (
-                <div key={ticket.id} className="bg-white p-2 rounded border border-red-200">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs text-red-700">#{ticket.ticket_id}</span>
-                    <span className="text-xs text-red-600">{ticket.prioridad}</span>
+                <div key={ticket.id} className="bg-white p-3 rounded border border-red-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-red-700">#{ticket.ticket_id}</span>
+                      <span className="text-xs text-red-600">{ticket.prioridad}</span>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setSelectedTicketForAudit(ticket)
+                        setAuditModalOpen(true)
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Auditar
+                    </Button>
                   </div>
                   <p className="text-sm text-gray-700 truncate">{ticket.asunto}</p>
+                  <p className="text-xs text-gray-500 mt-1">{ticket.cliente}</p>
                 </div>
               ))}
               {overdueTickets.length > 5 && (
@@ -512,6 +557,57 @@ export default function OperatorView() {
           <p>• Para cambios en tu configuración, contacta al administrador</p>
         </CardContent>
       </Card>
+
+      {/* Modal de Auditoría */}
+      {auditModalOpen && selectedTicketForAudit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <FileSearch className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Solicitar Auditoría</h3>
+                  <p className="text-sm text-gray-500">Ticket #{selectedTicketForAudit.ticket_id}</p>
+                </div>
+              </div>
+              
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-700 mb-2">Detalles del ticket:</p>
+                <p className="text-sm text-gray-600 mb-1"><strong>Cliente:</strong> {selectedTicketForAudit.cliente}</p>
+                <p className="text-sm text-gray-600 mb-1"><strong>Asunto:</strong> {selectedTicketForAudit.asunto}</p>
+                <p className="text-sm text-gray-600"><strong>Prioridad:</strong> {selectedTicketForAudit.prioridad}</p>
+              </div>
+
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  ℹ️ Al confirmar, este ticket será marcado para auditoría y el administrador será notificado para revisión manual.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setAuditModalOpen(false)
+                    setSelectedTicketForAudit(null)
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleRequestAudit}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  Confirmar Auditoría
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

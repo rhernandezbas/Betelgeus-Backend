@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import pytz
 from sqlalchemy import func
 from app.utils.config import db
-from app.models.models import TicketResponseMetrics
+from app.models.models import TicketResponseMetrics, IncidentsDetection
 
 logger = get_logger(__name__)
 
@@ -1185,6 +1185,127 @@ def get_reassignment_history():
         
     except Exception as e:
         logger.error(f"Error getting reassignment history: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/tickets/<ticket_id>/request-audit', methods=['POST'])
+def request_ticket_audit(ticket_id):
+    """Mark a ticket for audit by operator."""
+    try:
+        from datetime import datetime
+        
+        data = request.get_json()
+        person_id = data.get('person_id')
+        
+        # Buscar el ticket
+        ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
+        
+        if not ticket:
+            return jsonify({
+                'success': False,
+                'error': 'Ticket no encontrado'
+            }), 404
+        
+        # Marcar como solicitado para auditoría
+        ticket.audit_requested = True
+        ticket.audit_requested_at = datetime.now()
+        ticket.audit_requested_by = person_id
+        ticket.audit_notified = False  # Resetear notificación
+        
+        db.session.commit()
+        
+        log_audit(
+            action='request_audit',
+            entity_type='ticket',
+            entity_id=ticket_id,
+            notes=f"Operador {person_id} solicitó auditoría para ticket {ticket_id}"
+        )
+        
+        logger.info(f"✅ Ticket {ticket_id} marcado para auditoría por operador {person_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ticket marcado para auditoría'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error requesting audit for ticket {ticket_id}: {e}")
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/audit-tickets', methods=['GET'])
+def get_audit_tickets():
+    """Get tickets marked for audit."""
+    try:
+        # Obtener tickets marcados para auditoría
+        audit_tickets = IncidentsDetection.query.filter_by(
+            audit_requested=True
+        ).order_by(IncidentsDetection.audit_requested_at.desc()).all()
+        
+        tickets_data = []
+        for ticket in audit_tickets:
+            tickets_data.append({
+                'id': ticket.id,
+                'ticket_id': ticket.Ticket_ID,
+                'customer_id': ticket.Cliente,
+                'customer_name': ticket.Cliente_Nombre,
+                'subject': ticket.Asunto,
+                'created_at': ticket.Fecha_Creacion,
+                'priority': ticket.Prioridad,
+                'status': ticket.Estado,
+                'assigned_to': ticket.assigned_to,
+                'is_closed': ticket.is_closed,
+                'exceeded_threshold': ticket.exceeded_threshold,
+                'response_time_minutes': ticket.response_time_minutes,
+                'audit_requested_at': ticket.audit_requested_at.isoformat() if ticket.audit_requested_at else None,
+                'audit_requested_by': ticket.audit_requested_by,
+                'audit_notified': ticket.audit_notified
+            })
+        
+        return jsonify({
+            'success': True,
+            'tickets': tickets_data,
+            'total': len(tickets_data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting audit tickets: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/tickets/<ticket_id>/mark-audit-notified', methods=['POST'])
+def mark_audit_notified(ticket_id):
+    """Mark that admin has been notified about audit request."""
+    try:
+        ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
+        
+        if not ticket:
+            return jsonify({
+                'success': False,
+                'error': 'Ticket no encontrado'
+            }), 404
+        
+        ticket.audit_notified = True
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ticket marcado como notificado'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error marking audit notified for ticket {ticket_id}: {e}")
+        db.session.rollback()
         return jsonify({
             'success': False,
             'error': str(e)
