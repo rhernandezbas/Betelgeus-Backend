@@ -1,6 +1,7 @@
 """This module contains the Incident model."""
 
 from app.utils.config import db
+from sqlalchemy.dialects.mysql import JSON
 
 
 class IncidentsDetection(db.Model):
