@@ -18,6 +18,7 @@ export default function Metrics() {
     operator: 'all',
     priority: 'all'
   })
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const { toast } = useToast()
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
@@ -72,14 +73,23 @@ export default function Metrics() {
   }
 
   const handleToggleThreshold = async (ticketId, currentStatus) => {
+    const newStatus = !currentStatus
+    const message = newStatus 
+      ? '¿Marcar este ticket como VENCIDO? Se creará la métrica si no existe.'
+      : '¿Desmarcar este ticket como vencido?'
+    
+    if (!confirm(message)) {
+      return
+    }
+    
     try {
       await adminApi.updateTicketThreshold(ticketId, { 
-        exceeded_threshold: !currentStatus 
+        exceeded_threshold: newStatus 
       })
       
       toast({
         title: 'Actualizado',
-        description: `Ticket ${!currentStatus ? 'marcado como vencido' : 'desmarcado como vencido'}`,
+        description: `Ticket ${newStatus ? 'marcado como vencido' : 'desmarcado como vencido'}`,
       })
       
       // Recargar datos
@@ -88,10 +98,41 @@ export default function Metrics() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Error al actualizar el ticket',
+        description: error.response?.data?.error || 'Error al actualizar el ticket',
         variant: 'destructive'
       })
     }
+  }
+
+  const handleSort = (key) => {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+
+    const sorted = [...filteredTickets].sort((a, b) => {
+      let aValue = a[key]
+      let bValue = b[key]
+
+      // Manejar valores numéricos
+      if (key === 'response_time') {
+        aValue = aValue || 0
+        bValue = bValue || 0
+      }
+
+      // Manejar fechas
+      if (key === 'created_at') {
+        aValue = parseDate(aValue)?.getTime() || 0
+        bValue = parseDate(bValue)?.getTime() || 0
+      }
+
+      if (aValue < bValue) return direction === 'asc' ? -1 : 1
+      if (aValue > bValue) return direction === 'asc' ? 1 : -1
+      return 0
+    })
+
+    setFilteredTickets(sorted)
   }
 
   const handleDeleteTicket = async (ticketId) => {
@@ -531,14 +572,63 @@ export default function Metrics() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-2 font-medium">ID</th>
-                  <th className="text-left p-2 font-medium">Cliente</th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('ticket_id')}>
+                    <div className="flex items-center gap-1">
+                      ID
+                      {sortConfig.key === 'ticket_id' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('cliente')}>
+                    <div className="flex items-center gap-1">
+                      Cliente
+                      {sortConfig.key === 'cliente' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="text-left p-2 font-medium">Asunto</th>
-                  <th className="text-left p-2 font-medium">Estado</th>
-                  <th className="text-left p-2 font-medium">Prioridad</th>
-                  <th className="text-left p-2 font-medium">Operador</th>
-                  <th className="text-left p-2 font-medium">Fecha</th>
-                  <th className="text-left p-2 font-medium">Tiempo</th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('estado')}>
+                    <div className="flex items-center gap-1">
+                      Estado
+                      {sortConfig.key === 'estado' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('prioridad')}>
+                    <div className="flex items-center gap-1">
+                      Prioridad
+                      {sortConfig.key === 'prioridad' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('operator_name')}>
+                    <div className="flex items-center gap-1">
+                      Operador
+                      {sortConfig.key === 'operator_name' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                    <div className="flex items-center gap-1">
+                      Fecha
+                      {sortConfig.key === 'created_at' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('response_time')}>
+                    <div className="flex items-center gap-1">
+                      Tiempo
+                      {sortConfig.key === 'response_time' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="text-left p-2 font-medium">Vencido</th>
                   <th className="text-left p-2 font-medium">Acciones</th>
                 </tr>

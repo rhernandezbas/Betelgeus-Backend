@@ -985,7 +985,7 @@ def get_incidents():
 
 @admin_bp.route('/tickets/<ticket_id>/threshold', methods=['PUT'])
 def update_ticket_threshold(ticket_id):
-    """Update exceeded_threshold status for a ticket."""
+    """Update exceeded_threshold status for a ticket. Creates metric if not exists."""
     try:
         data = request.get_json()
         exceeded_threshold = data.get('exceeded_threshold', False)
@@ -994,13 +994,31 @@ def update_ticket_threshold(ticket_id):
         metric = TicketResponseMetrics.query.filter_by(ticket_id=ticket_id).first()
         
         if not metric:
-            return jsonify({
-                'success': False,
-                'error': 'Ticket no encontrado en métricas'
-            }), 404
+            # Buscar el ticket en incidents_detection
+            incident = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
+            
+            if not incident:
+                return jsonify({
+                    'success': False,
+                    'error': 'Ticket no encontrado'
+                }), 404
+            
+            # Crear la métrica automáticamente
+            from datetime import datetime
+            metric = TicketResponseMetrics(
+                ticket_id=ticket_id,
+                person_id=incident.assigned_to,
+                created_at=incident.Fecha_Creacion if hasattr(incident.Fecha_Creacion, 'strftime') else datetime.now(),
+                exceeded_threshold=exceeded_threshold,
+                is_closed=incident.is_closed,
+                response_time_minutes=0
+            )
+            db.session.add(metric)
+            logger.info(f"✨ Métrica creada automáticamente para ticket {ticket_id}")
+        else:
+            # Actualizar el estado existente
+            metric.exceeded_threshold = exceeded_threshold
         
-        # Actualizar el estado
-        metric.exceeded_threshold = exceeded_threshold
         db.session.commit()
         
         log_audit(
