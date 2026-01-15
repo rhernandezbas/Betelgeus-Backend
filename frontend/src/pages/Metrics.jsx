@@ -52,6 +52,7 @@ export default function Metrics() {
         cliente: incident.customer_name || 'N/A',
         asunto: incident.subject || 'Sin asunto',
         estado: incident.status_name || 'Desconocido',
+        is_closed: incident.is_closed || false,
         prioridad: incident.priority_name || 'Media',
         assigned_to: incident.assigned_to,
         operator_name: incident.operator_name || 'Sin asignar',
@@ -201,8 +202,13 @@ export default function Metrics() {
       })
     }
 
-    // Filtrar por estado
-    if (filters.status !== 'all') {
+    // Filtrar por estado (usar is_closed como fuente de verdad)
+    if (filters.status === 'Abierto') {
+      filtered = filtered.filter(t => t.is_closed === false)
+    } else if (filters.status === 'Cerrado') {
+      filtered = filtered.filter(t => t.is_closed === true)
+    } else if (filters.status !== 'all' && filters.status !== 'Todos') {
+      // Para otros estados específicos, usar el campo estado
       filtered = filtered.filter(t => t.estado === filters.status)
     }
 
