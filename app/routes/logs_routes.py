@@ -23,7 +23,7 @@ def parse_log_line(line):
         }
     return None
 
-@logs_bp.route('/', methods=['GET'])
+@logs_bp.route('', methods=['GET'])
 def get_logs():
     """Get logs with filters"""
     try:
