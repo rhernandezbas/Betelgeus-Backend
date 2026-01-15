@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, LogOut, Menu, X, Bell, BellOff } from 'lucide-react'
+import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, Bell, BellOff } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 export default function OperatorView() {
@@ -12,11 +11,9 @@ export default function OperatorView() {
   const [operatorData, setOperatorData] = useState(null)
   const [myTickets, setMyTickets] = useState([])
   const [stats, setStats] = useState(null)
-  const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all'
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all', 'overdue'
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const { toast } = useToast()
-  const navigate = useNavigate()
 
   // Obtener el person_id del operador logueado desde sessionStorage
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
@@ -58,10 +55,19 @@ export default function OperatorView() {
 
       // Obtener tickets reales asignados al operador con filtro de estado
       try {
-        const ticketsResponse = await adminApi.getIncidents({ 
-          assigned_to: personId,
-          ticket_status: ticketFilter
-        })
+        let ticketsResponse
+        if (ticketFilter === 'overdue') {
+          // Para vencidos, obtener todos y filtrar por exceeded_threshold
+          ticketsResponse = await adminApi.getIncidents({ 
+            assigned_to: personId,
+            ticket_status: 'all'
+          })
+        } else {
+          ticketsResponse = await adminApi.getIncidents({ 
+            assigned_to: personId,
+            ticket_status: ticketFilter
+          })
+        }
         const tickets = ticketsResponse.data.incidents || []
         
         // Función para parsear fecha DD-MM-YYYY
@@ -75,8 +81,14 @@ export default function OperatorView() {
           return new Date(`${year}-${month}-${day}`)
         }
         
+        // Filtrar vencidos si es necesario
+        let filteredTickets = tickets
+        if (ticketFilter === 'overdue') {
+          filteredTickets = tickets.filter(t => t.exceeded_threshold)
+        }
+        
         // Transformar al formato esperado
-        const formattedTickets = tickets.map(ticket => ({
+        const formattedTickets = filteredTickets.map(ticket => ({
           id: ticket.id,
           ticket_id: ticket.ticket_id,
           cliente: ticket.customer_name,
@@ -138,36 +150,6 @@ export default function OperatorView() {
     }
   }
 
-  const handleLogout = () => {
-    sessionStorage.clear()
-    toast({
-      title: 'Sesión cerrada',
-      description: 'Has cerrado sesión exitosamente'
-    })
-    navigate('/login')
-  }
-
-  const handleToggleNotifications = async () => {
-    try {
-      const newState = !notificationsEnabled
-      await adminApi.updateOperatorConfig(personId, {
-        notifications_enabled: newState
-      })
-      setNotificationsEnabled(newState)
-      toast({
-        title: newState ? 'Notificaciones activadas' : 'Notificaciones desactivadas',
-        description: newState ? 'Recibirás alertas de WhatsApp' : 'No recibirás alertas de WhatsApp'
-      })
-      fetchOperatorData()
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo cambiar el estado de notificaciones',
-        variant: 'destructive'
-      })
-    }
-  }
-
   useEffect(() => {
     fetchOperatorData()
     // Actualizar cada 30 segundos
@@ -201,7 +183,7 @@ export default function OperatorView() {
 
   return (
     <div className="space-y-6">
-      {/* Header con menú desplegable */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mi Panel de Operador</h1>
@@ -209,54 +191,10 @@ export default function OperatorView() {
             Bienvenido, {operatorData.name}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={fetchOperatorData} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualizar
-          </Button>
-          
-          {/* Menú desplegable */}
-          <div className="relative">
-            <Button
-              onClick={() => setMenuOpen(!menuOpen)}
-              variant="outline"
-              size="sm"
-            >
-              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </Button>
-            
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border z-50">
-                <div className="py-2">
-                  <button
-                    onClick={handleToggleNotifications}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"
-                  >
-                    {notificationsEnabled ? (
-                      <>
-                        <Bell className="h-4 w-4 text-green-600" />
-                        <span>Notificaciones: Activas</span>
-                      </>
-                    ) : (
-                      <>
-                        <BellOff className="h-4 w-4 text-gray-600" />
-                        <span>Notificaciones: Inactivas</span>
-                      </>
-                    )}
-                  </button>
-                  <div className="border-t my-1"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-red-600"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Cerrar Sesión</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <Button onClick={fetchOperatorData} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualizar
+        </Button>
       </div>
 
       {/* Mensaje informativo si no tiene person_id */}
@@ -494,6 +432,13 @@ export default function OperatorView() {
                 size="sm"
               >
                 Todos
+              </Button>
+              <Button
+                onClick={() => setTicketFilter('overdue')}
+                variant={ticketFilter === 'overdue' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Vencidos
               </Button>
             </div>
           </div>

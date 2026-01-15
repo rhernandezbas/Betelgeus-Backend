@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
+import OperatorLayout from './components/OperatorLayout'
 import Dashboard from './pages/Dashboard'
 import OperatorsManagement from './pages/OperatorsManagement'
 import Configuration from './pages/Configuration'
@@ -42,12 +43,14 @@ function App() {
           <Route path="reassignment-history" element={<ReassignmentHistory />} />
         </Route>
 
-        {/* Ruta protegida para operadores */}
+        {/* Rutas protegidas para operadores */}
         <Route path="/operator-view" element={
           <ProtectedRoute requiredRole="operator">
-            <OperatorView />
+            <OperatorLayout />
           </ProtectedRoute>
-        } />
+        }>
+          <Route index element={<OperatorView />} />
+        </Route>
       </Routes>
       <Toaster />
     </>
