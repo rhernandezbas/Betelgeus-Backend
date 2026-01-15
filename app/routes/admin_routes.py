@@ -812,13 +812,13 @@ def get_metrics():
         # Obtener estadísticas generales
         total_tickets = IncidentsDetection.query.count()
         open_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.status_name.in_(['Open', 'Abierto', 'New', 'Nuevo'])
+            IncidentsDetection.Estado.in_(['Open', 'Abierto', 'New', 'Nuevo'])
         ).count()
         closed_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.status_name.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto'])
+            IncidentsDetection.Estado.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto'])
         ).count()
         in_progress_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.status_name.in_(['In Progress', 'En Progreso', 'Working', 'Trabajando'])
+            IncidentsDetection.Estado.in_(['In Progress', 'En Progreso', 'Working', 'Trabajando'])
         ).count()
         
         # Calcular tiempo promedio de respuesta
@@ -826,29 +826,32 @@ def get_metrics():
             TicketResponseMetrics.response_time_minutes.isnot(None)
         ).scalar()
         
+        # Distribución por operador - obtener nombres de operadores
+        from app.interface.interfaces import OperatorConfigInterface
+        operators = OperatorConfigInterface.get_all()
+        operator_map = {op.person_id: op.name for op in operators}
+        
         # Distribución por operador
         operator_stats = db.session.query(
             IncidentsDetection.assigned_to,
-            IncidentsDetection.operator_name,
             func.count(IncidentsDetection.id).label('assigned'),
             func.sum(
                 func.case(
-                    (IncidentsDetection.status_name.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto']), 1),
+                    (IncidentsDetection.Estado.in_(['Closed', 'Cerrado', 'Resolved', 'Resuelto']), 1),
                     else_=0
                 )
             ).label('completed')
         ).filter(
             IncidentsDetection.assigned_to.isnot(None)
         ).group_by(
-            IncidentsDetection.assigned_to,
-            IncidentsDetection.operator_name
+            IncidentsDetection.assigned_to
         ).all()
         
         operator_distribution = []
         for stat in operator_stats:
             operator_distribution.append({
                 'person_id': stat.assigned_to,
-                'name': stat.operator_name or f'Operador {stat.assigned_to}',
+                'name': operator_map.get(stat.assigned_to, f'Operador {stat.assigned_to}'),
                 'assigned': stat.assigned,
                 'completed': stat.completed or 0
             })
@@ -890,38 +893,43 @@ def get_incidents():
         # Construir query base
         query = IncidentsDetection.query
         
+        # Obtener nombres de operadores
+        from app.interface.interfaces import OperatorConfigInterface
+        operators = OperatorConfigInterface.get_all()
+        operator_map = {op.person_id: op.name for op in operators}
+        
         # Aplicar filtros
         if start_date:
-            query = query.filter(IncidentsDetection.created_at >= start_date)
+            query = query.filter(IncidentsDetection.Fecha_Creacion >= start_date)
         if end_date:
-            query = query.filter(IncidentsDetection.created_at <= end_date)
+            query = query.filter(IncidentsDetection.Fecha_Creacion <= end_date)
         if status:
-            query = query.filter(IncidentsDetection.status_name == status)
+            query = query.filter(IncidentsDetection.Estado == status)
         if assigned_to:
             query = query.filter(IncidentsDetection.assigned_to == int(assigned_to))
         
-        # Ordenar por fecha de creación descendente
-        incidents = query.order_by(IncidentsDetection.created_at.desc()).all()
+        # Ordenar por ID descendente (más recientes primero)
+        incidents = query.order_by(IncidentsDetection.id.desc()).all()
         
         # Transformar a diccionarios
         incidents_data = []
         for incident in incidents:
             incident_dict = {
                 'id': incident.id,
-                'ticket_id': incident.ticket_id,
-                'customer_name': incident.customer_name,
-                'subject': incident.subject,
-                'status_name': incident.status_name,
-                'priority_name': incident.priority_name,
+                'ticket_id': incident.Ticket_ID,
+                'customer_name': incident.Cliente_Nombre or incident.Cliente,
+                'subject': incident.Asunto,
+                'status_name': incident.Estado,
+                'priority_name': incident.Prioridad,
                 'assigned_to': incident.assigned_to,
-                'operator_name': incident.operator_name,
-                'created_at': incident.created_at.isoformat() if incident.created_at else None,
-                'updated_at': incident.updated_at.isoformat() if incident.updated_at else None,
+                'operator_name': operator_map.get(incident.assigned_to, 'Sin asignar') if incident.assigned_to else 'Sin asignar',
+                'created_at': incident.Fecha_Creacion,
+                'updated_at': None,
                 'response_time_minutes': None
             }
             
             # Obtener tiempo de respuesta si existe
-            metric = TicketResponseMetrics.query.filter_by(ticket_id=incident.ticket_id).first()
+            metric = TicketResponseMetrics.query.filter_by(ticket_id=incident.Ticket_ID).first()
             if metric and metric.response_time_minutes:
                 incident_dict['response_time_minutes'] = metric.response_time_minutes
             
