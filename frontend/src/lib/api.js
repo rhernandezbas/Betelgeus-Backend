@@ -42,4 +42,12 @@ export const systemApi = {
   resume: (data) => api.post('/api/system/resume', data),
 };
 
+export const messagesApi = {
+  getCurrentMessages: () => api.get('/api/admin/messages/current'),
+  getTemplates: () => api.get('/api/admin/messages/templates'),
+  getTemplate: (id) => api.get(`/api/admin/messages/templates/${id}`),
+  updateTemplate: (id, data) => api.put(`/api/admin/messages/templates/${id}`, data),
+  createTemplate: (data) => api.post('/api/admin/messages/templates', data),
+};
+
 export default api;

@@ -9,8 +9,10 @@ from app.interface.interfaces import (
     SystemConfigInterface,
     AuditLogInterface,
     AssignmentTrackerInterface,
-    TicketResponseMetricsInterface
+    TicketResponseMetricsInterface,
+    IncidentsDetectionInterface
 )
+from app.interface.message_templates import MessageTemplateInterface
 from app.utils.logger import get_logger
 from datetime import datetime, timedelta
 import pytz

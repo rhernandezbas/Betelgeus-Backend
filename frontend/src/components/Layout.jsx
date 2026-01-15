@@ -5,6 +5,7 @@ import {
   Clock, 
   Settings, 
   FileText,
+  MessageSquare,
   Menu,
   X
 } from 'lucide-react'
@@ -15,6 +16,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Operadores', href: '/operators', icon: Users },
   { name: 'Horarios', href: '/schedules', icon: Clock },
+  { name: 'Mensajes', href: '/messages', icon: MessageSquare },
   { name: 'Configuración', href: '/configuration', icon: Settings },
   { name: 'Auditoría', href: '/audit', icon: FileText },
 ]

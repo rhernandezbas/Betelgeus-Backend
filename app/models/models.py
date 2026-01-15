@@ -118,17 +118,32 @@ class SystemConfig(db.Model):
 class AuditLog(db.Model):
     """Registro de auditoría de cambios en el sistema."""
     __tablename__ = 'audit_log'
-
+    
     id = db.Column(db.Integer, primary_key=True)
-    action = db.Column(db.String(100), nullable=False)  # pause_operator, reset_counter, update_config, etc.
-    entity_type = db.Column(db.String(50))  # operator, system, schedule, etc.
+    action = db.Column(db.String(100), nullable=False)
+    entity_type = db.Column(db.String(50))
     entity_id = db.Column(db.String(100))
-    old_value = db.Column(db.JSON)
-    new_value = db.Column(db.JSON)
+    old_value = db.Column(JSON)
+    new_value = db.Column(JSON)
     performed_by = db.Column(db.String(100))
-    performed_at = db.Column(db.DateTime, default=db.func.now(), index=True)
+    performed_at = db.Column(db.DateTime, default=datetime.utcnow)
     ip_address = db.Column(db.String(50))
     notes = db.Column(db.Text)
 
+
+class MessageTemplate(db.Model):
+    __tablename__ = 'message_template'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    template_key = db.Column(db.String(100), unique=True, nullable=False)
+    template_name = db.Column(db.String(200), nullable=False)
+    template_content = db.Column(db.Text, nullable=False)
+    description = db.Column(db.Text)
+    variables = db.Column(JSON)  # Lista de variables disponibles
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = db.Column(db.String(100))
+
     def __repr__(self):
-        return f'<AuditLog action: {self.action}, entity: {self.entity_type}, at: {self.performed_at}>'
+        return f'<MessageTemplate template_key: {self.template_key}, template_name: {self.template_name}>'

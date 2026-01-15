@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional, Union
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.utils.config import db
-from app.models.models import IncidentsDetection, AssignmentTracker, TicketResponseMetrics, OperatorConfig, OperatorSchedule, SystemConfig, AuditLog
+from app.models.models import IncidentsDetection, AssignmentTracker, TicketResponseMetrics, OperatorConfig, OperatorSchedule, SystemConfig, AuditLog, MessageTemplate
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

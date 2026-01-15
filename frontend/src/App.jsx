@@ -5,6 +5,7 @@ import Operators from './pages/Operators'
 import Schedules from './pages/Schedules'
 import Configuration from './pages/Configuration'
 import AuditLogs from './pages/AuditLogs'
+import Messages from './pages/Messages'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="operators" element={<Operators />} />
           <Route path="schedules" element={<Schedules />} />
           <Route path="configuration" element={<Configuration />} />
+          <Route path="messages" element={<Messages />} />
           <Route path="audit" element={<AuditLogs />} />
         </Route>
       </Routes>
