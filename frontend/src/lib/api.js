@@ -34,6 +34,8 @@ export const adminApi = {
   
   getDashboardStats: () => api.get('/api/admin/dashboard/stats'),
   getOperatorMetrics: (personId, days) => api.get(`/api/admin/metrics/operator/${personId}`, { params: { days } }),
+  getMetrics: () => api.get('/api/admin/metrics'),
+  getIncidents: (params) => api.get('/api/admin/incidents', { params }),
 };
 
 export const systemApi = {

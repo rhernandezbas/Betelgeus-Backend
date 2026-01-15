@@ -801,3 +801,70 @@ def get_operator_metrics(person_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+@admin_bp.route('/incidents', methods=['GET'])
+def get_incidents():
+    """Get all incidents/tickets with optional filters."""
+    try:
+        from app.interface.interfaces import IncidentsDetectionInterface
+        from app.models.models import IncidentsDetection
+        
+        # Obtener parámetros de filtro
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        status = request.args.get('status')
+        assigned_to = request.args.get('assigned_to')
+        
+        # Construir query base
+        query = IncidentsDetection.query
+        
+        # Aplicar filtros
+        if start_date:
+            query = query.filter(IncidentsDetection.created_at >= start_date)
+        if end_date:
+            query = query.filter(IncidentsDetection.created_at <= end_date)
+        if status:
+            query = query.filter(IncidentsDetection.status_name == status)
+        if assigned_to:
+            query = query.filter(IncidentsDetection.assigned_to == int(assigned_to))
+        
+        # Ordenar por fecha de creación descendente
+        incidents = query.order_by(IncidentsDetection.created_at.desc()).all()
+        
+        # Transformar a diccionarios
+        incidents_data = []
+        for incident in incidents:
+            incident_dict = {
+                'id': incident.id,
+                'ticket_id': incident.ticket_id,
+                'customer_name': incident.customer_name,
+                'subject': incident.subject,
+                'status_name': incident.status_name,
+                'priority_name': incident.priority_name,
+                'assigned_to': incident.assigned_to,
+                'operator_name': incident.operator_name,
+                'created_at': incident.created_at.isoformat() if incident.created_at else None,
+                'updated_at': incident.updated_at.isoformat() if incident.updated_at else None,
+                'response_time_minutes': None
+            }
+            
+            # Obtener tiempo de respuesta si existe
+            metric = TicketResponseMetrics.query.filter_by(ticket_id=incident.ticket_id).first()
+            if metric and metric.response_time_minutes:
+                incident_dict['response_time_minutes'] = metric.response_time_minutes
+            
+            incidents_data.append(incident_dict)
+        
+        return jsonify({
+            'success': True,
+            'incidents': incidents_data,
+            'total': len(incidents_data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting incidents: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

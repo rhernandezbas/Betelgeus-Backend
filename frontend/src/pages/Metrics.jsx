@@ -40,27 +40,33 @@ export default function Metrics() {
 
   const fetchTickets = async () => {
     try {
-      // Aquí deberías llamar a un endpoint que devuelva los tickets
-      // Por ahora usamos datos de ejemplo
-      const mockTickets = [
-        {
-          id: 1,
-          ticket_id: 'T-001',
-          cliente: 'Cliente A',
-          asunto: 'Problema de conexión',
-          estado: 'Abierto',
-          prioridad: 'Alta',
-          assigned_to: 1,
-          operator_name: 'Luis Sarco',
-          created_at: '2026-01-14T10:00:00',
-          response_time: 15
-        },
-        // Más tickets...
-      ]
-      setTickets(mockTickets)
-      setFilteredTickets(mockTickets)
+      // Obtener tickets desde la base de datos
+      const response = await adminApi.getIncidents()
+      const incidents = response.data.incidents || []
+      
+      // Transformar los datos al formato esperado
+      const transformedTickets = incidents.map(incident => ({
+        id: incident.id,
+        ticket_id: incident.ticket_id,
+        cliente: incident.customer_name || 'N/A',
+        asunto: incident.subject || 'Sin asunto',
+        estado: incident.status_name || 'Desconocido',
+        prioridad: incident.priority_name || 'Media',
+        assigned_to: incident.assigned_to,
+        operator_name: incident.operator_name || 'Sin asignar',
+        created_at: incident.created_at,
+        response_time: incident.response_time_minutes
+      }))
+      
+      setTickets(transformedTickets)
+      setFilteredTickets(transformedTickets)
     } catch (error) {
       console.error('Error al cargar tickets:', error)
+      toast({
+        title: 'Error',
+        description: 'Error al cargar tickets',
+        variant: 'destructive'
+      })
     }
   }
 
