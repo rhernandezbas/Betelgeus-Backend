@@ -2,6 +2,7 @@
 
 from app.utils.config import db
 from sqlalchemy.dialects.mysql import JSON
+from datetime import datetime
 
 
 class IncidentsDetection(db.Model):
