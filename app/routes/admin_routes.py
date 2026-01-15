@@ -891,11 +891,11 @@ def get_metrics():
         # Obtener estadísticas generales de tickets_detection
         total_tickets = IncidentsDetection.query.count()
         
-        # Estados en la BD son: SUCCESS, FAIL, etc.
+        # Usar is_closed como fuente única de verdad
         open_tickets = IncidentsDetection.query.filter(
-            IncidentsDetection.Estado.in_(['FAIL', 'PENDING', 'OPEN'])
+            IncidentsDetection.is_closed == False
         ).count()
-        # Tickets cerrados (is_closed=True)
+        
         closed_tickets = IncidentsDetection.query.filter(
             IncidentsDetection.is_closed == True
         ).count()
@@ -980,8 +980,8 @@ def get_incidents():
         from app.models.models import IncidentsDetection
         
         # Obtener parámetros de filtro
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        start_date_str = request.args.get('start_date')  # Formato: YYYY-MM-DD
+        end_date_str = request.args.get('end_date')      # Formato: YYYY-MM-DD
         status = request.args.get('status')
         assigned_to = request.args.get('assigned_to')
         ticket_status = request.args.get('ticket_status')  # 'open', 'closed', o 'all'
@@ -994,17 +994,33 @@ def get_incidents():
         operators = OperatorConfigInterface.get_all()
         operator_map = {op.person_id: op.name for op in operators}
         
-        # Aplicar filtros
-        if start_date:
-            query = query.filter(IncidentsDetection.Fecha_Creacion >= start_date)
-        if end_date:
-            query = query.filter(IncidentsDetection.Fecha_Creacion <= end_date)
+        # Aplicar filtros de fecha (convertir formato YYYY-MM-DD a DD-MM-YYYY)
+        if start_date_str:
+            try:
+                # Convertir "2026-01-12" a "12-01-2026 00:00:00"
+                start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d')
+                start_date_formatted = start_date_obj.strftime('%d-%m-%Y')
+                # Filtrar tickets >= fecha inicio
+                query = query.filter(IncidentsDetection.Fecha_Creacion >= start_date_formatted)
+            except ValueError:
+                logger.warning(f"Formato de start_date inválido: {start_date_str}")
+        
+        if end_date_str:
+            try:
+                # Convertir "2026-01-15" a "15-01-2026 23:59:59"
+                end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d')
+                end_date_formatted = end_date_obj.strftime('%d-%m-%Y 23:59:59')
+                # Filtrar tickets <= fecha fin
+                query = query.filter(IncidentsDetection.Fecha_Creacion <= end_date_formatted)
+            except ValueError:
+                logger.warning(f"Formato de end_date inválido: {end_date_str}")
+        
         if status:
             query = query.filter(IncidentsDetection.Estado == status)
         if assigned_to:
             query = query.filter(IncidentsDetection.assigned_to == int(assigned_to))
         
-        # Filtro de estado abierto/cerrado usando is_closed
+        # Filtro de estado abierto/cerrado usando is_closed (fuente de verdad)
         if ticket_status == 'open':
             query = query.filter(IncidentsDetection.is_closed == False)
         elif ticket_status == 'closed':
