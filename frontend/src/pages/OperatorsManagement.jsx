@@ -17,7 +17,7 @@ export default function OperatorsManagement() {
   const [loading, setLoading] = useState(true)
   const [editingOperator, setEditingOperator] = useState(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [activeScheduleTab, setActiveScheduleTab] = useState('assignment')
+  const [activeScheduleTab, setActiveScheduleTab] = useState('work')
   const [newSchedule, setNewSchedule] = useState(null)
   const [editingSchedule, setEditingSchedule] = useState(null)
   const { toast } = useToast()
@@ -158,11 +158,18 @@ export default function OperatorsManagement() {
   }
 
   const handleAddSchedule = (personId) => {
+    const defaultTimes = {
+      work: { start: '08:00', end: '17:00' },
+      assignment: { start: '08:00', end: '16:00' },
+      alert: { start: '08:00', end: '17:00' }
+    }
+    const times = defaultTimes[activeScheduleTab] || defaultTimes.work
+    
     setNewSchedule({
       person_id: personId,
       day_of_week: 0,
-      start_time: activeScheduleTab === 'assignment' ? '08:00' : '10:00',
-      end_time: activeScheduleTab === 'assignment' ? '17:00' : '18:00',
+      start_time: times.start,
+      end_time: times.end,
       schedule_type: activeScheduleTab,
       is_active: true
     })
@@ -175,9 +182,14 @@ export default function OperatorsManagement() {
         schedule_type: activeScheduleTab,
         performed_by: 'admin'
       })
+      const typeNames = {
+        work: 'trabajo',
+        assignment: 'asignación',
+        alert: 'alertas'
+      }
       toast({
         title: 'Horario Creado',
-        description: `Horario de ${activeScheduleTab === 'assignment' ? 'asignación' : 'alertas'} creado exitosamente`
+        description: `Horario de ${typeNames[activeScheduleTab]} creado exitosamente`
       })
       setNewSchedule(null)
       fetchOperators()
@@ -326,7 +338,7 @@ export default function OperatorsManagement() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold text-green-600">
-                        {operator.schedules?.length || 0}
+                        {operator.schedules?.filter(s => s.schedule_type === 'work').length || 0}
                       </div>
                       <div className="text-xs text-muted-foreground">Horarios</div>
                     </div>
@@ -463,6 +475,17 @@ export default function OperatorsManagement() {
           {/* Schedule Type Tabs */}
           <div className="flex gap-2 border-b">
             <button
+              onClick={() => setActiveScheduleTab('work')}
+              className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                activeScheduleTab === 'work'
+                  ? 'border-b-2 border-green-600 text-green-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              Horarios de Trabajo
+            </button>
+            <button
               onClick={() => setActiveScheduleTab('assignment')}
               className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
                 activeScheduleTab === 'assignment'
@@ -487,10 +510,23 @@ export default function OperatorsManagement() {
           </div>
 
           {/* Info Card */}
-          <Card className={activeScheduleTab === 'assignment' ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}>
+          <Card className={
+            activeScheduleTab === 'work' ? 'bg-green-50 border-green-200' :
+            activeScheduleTab === 'assignment' ? 'bg-blue-50 border-blue-200' : 
+            'bg-orange-50 border-orange-200'
+          }>
             <CardContent className="pt-6">
-              <p className={`text-sm ${activeScheduleTab === 'assignment' ? 'text-blue-800' : 'text-orange-800'}`}>
-                {activeScheduleTab === 'assignment' ? (
+              <p className={`text-sm ${
+                activeScheduleTab === 'work' ? 'text-green-800' :
+                activeScheduleTab === 'assignment' ? 'text-blue-800' : 
+                'text-orange-800'
+              }`}>
+                {activeScheduleTab === 'work' ? (
+                  <>
+                    <strong>Horarios de Trabajo:</strong> Define el horario laboral general del operador. 
+                    Este es el horario en el que el operador está disponible para trabajar.
+                  </>
+                ) : activeScheduleTab === 'assignment' ? (
                   <>
                     <strong>Horarios de Asignación:</strong> Define los horarios en los que el operador puede recibir asignaciones de tickets. 
                     Durante estos horarios, el sistema asignará automáticamente tickets nuevos al operador.
@@ -522,7 +558,11 @@ export default function OperatorsManagement() {
                           {operator.name}
                         </CardTitle>
                         <CardDescription>
-                          {scheduleCount} horario{scheduleCount !== 1 ? 's' : ''} de {activeScheduleTab === 'assignment' ? 'asignación' : 'alertas'} configurado{scheduleCount !== 1 ? 's' : ''}
+                          {scheduleCount} horario{scheduleCount !== 1 ? 's' : ''} de {
+                            activeScheduleTab === 'work' ? 'trabajo' :
+                            activeScheduleTab === 'assignment' ? 'asignación' : 
+                            'alertas'
+                          } configurado{scheduleCount !== 1 ? 's' : ''}
                         </CardDescription>
                       </div>
                       <Button
@@ -539,10 +579,20 @@ export default function OperatorsManagement() {
                     {/* New Schedule Form */}
                     {isAddingSchedule && (
                       <div className={`mb-4 p-4 border-2 rounded-lg ${
-                        activeScheduleTab === 'assignment' ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50'
+                        activeScheduleTab === 'work' ? 'border-green-200 bg-green-50' :
+                        activeScheduleTab === 'assignment' ? 'border-blue-200 bg-blue-50' : 
+                        'border-orange-200 bg-orange-50'
                       }`}>
-                        <h4 className={`font-medium mb-3 ${activeScheduleTab === 'assignment' ? 'text-blue-900' : 'text-orange-900'}`}>
-                          Nuevo Horario de {activeScheduleTab === 'assignment' ? 'Asignación' : 'Alertas'}
+                        <h4 className={`font-medium mb-3 ${
+                          activeScheduleTab === 'work' ? 'text-green-900' :
+                          activeScheduleTab === 'assignment' ? 'text-blue-900' : 
+                          'text-orange-900'
+                        }`}>
+                          Nuevo Horario de {
+                            activeScheduleTab === 'work' ? 'Trabajo' :
+                            activeScheduleTab === 'assignment' ? 'Asignación' : 
+                            'Alertas'
+                          }
                         </h4>
                         <div className="grid grid-cols-4 gap-3">
                           <div>
@@ -653,7 +703,11 @@ export default function OperatorsManagement() {
                       })}
                       {Object.keys(groupedSchedules).length === 0 && (
                         <div className="text-center py-8 text-gray-500">
-                          No hay horarios de {activeScheduleTab === 'assignment' ? 'asignación' : 'alertas'} configurados
+                          No hay horarios de {
+                            activeScheduleTab === 'work' ? 'trabajo' :
+                            activeScheduleTab === 'assignment' ? 'asignación' : 
+                            'alertas'
+                          } configurados
                         </div>
                       )}
                     </div>
