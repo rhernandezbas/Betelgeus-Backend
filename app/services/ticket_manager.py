@@ -1006,8 +1006,11 @@ class TicketManager:
                 
                 # Primero verificar si está dentro de algún turno
                 for schedule in schedules:
-                    start_minutes = schedule["start_hour"] * 60 + schedule["start_minute"]
-                    end_minutes = schedule["end_hour"] * 60 + schedule["end_minute"]
+                    # Parsear horarios en formato "HH:MM"
+                    start_parts = schedule["start"].split(":")
+                    end_parts = schedule["end"].split(":")
+                    start_minutes = int(start_parts[0]) * 60 + int(start_parts[1])
+                    end_minutes = int(end_parts[0]) * 60 + int(end_parts[1])
                     
                     if start_minutes <= current_time_minutes <= end_minutes:
                         is_within_shift = True
@@ -1016,13 +1019,15 @@ class TicketManager:
                 # Si no está en ningún turno, verificar si pasó más de 60 minutos desde el fin del último turno
                 if not is_within_shift:
                     for schedule in schedules:
-                        end_minutes = schedule["end_hour"] * 60 + schedule["end_minute"]
+                        # Parsear horario de fin en formato "HH:MM"
+                        end_parts = schedule["end"].split(":")
+                        end_minutes = int(end_parts[0]) * 60 + int(end_parts[1])
                         minutes_after_shift = current_time_minutes - end_minutes
                         
                         # Si pasaron más de 60 minutos del fin de turno (1 hora después)
                         if minutes_after_shift >= 60:
                             should_unassign = True
-                            shift_end_time = f"{schedule['end_hour']:02d}:{schedule['end_minute']:02d}"
+                            shift_end_time = schedule["end"]
                             logger.info(f"⏰ Operador {operator_name} (ID {assigned_to}): Turno terminó a las {shift_end_time}")
                             logger.info(f"   Han pasado {minutes_after_shift} minutos desde el fin de turno")
                             break
