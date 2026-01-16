@@ -44,6 +44,9 @@ export const adminApi = {
   requestTicketAudit: (ticketId, data) => api.post(`/api/admin/tickets/${ticketId}/request-audit`, data),
   getAuditTickets: () => api.get('/api/admin/audit-tickets'),
   markAuditNotified: (ticketId) => api.post(`/api/admin/tickets/${ticketId}/mark-audit-notified`),
+  approveAudit: (ticketId) => api.post(`/api/admin/tickets/${ticketId}/approve-audit`),
+  rejectAudit: (ticketId) => api.post(`/api/admin/tickets/${ticketId}/reject-audit`),
+  deleteAudit: (ticketId) => api.delete(`/api/admin/tickets/${ticketId}/delete-audit`),
 };
 
 export const systemApi = {

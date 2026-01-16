@@ -34,6 +34,9 @@ class IncidentsDetection(db.Model):
     audit_notified = db.Column(db.Boolean, default=False)  # Admin fue notificado
     audit_requested_at = db.Column(db.DateTime)  # Fecha de solicitud de auditoría
     audit_requested_by = db.Column(db.Integer)  # Person ID del operador que solicitó
+    audit_status = db.Column(db.String(20), default='pending')  # pending/approved/rejected
+    audit_reviewed_at = db.Column(db.DateTime)  # Fecha de revisión por admin
+    audit_reviewed_by = db.Column(db.Integer)  # Admin user ID que revisó
 
     def __repr__(self):
         return f'<Detection id: {self.id}>'

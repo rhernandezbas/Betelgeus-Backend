@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, FileSearch, CheckCircle, AlertCircle, User, Clock } from 'lucide-react'
+import { RefreshCw, FileSearch, CheckCircle, AlertCircle, User, Clock, Trash2, XCircle, Check } from 'lucide-react'
 
 export default function AuditTickets() {
   const [tickets, setTickets] = useState([])
@@ -26,18 +26,56 @@ export default function AuditTickets() {
     }
   }
 
-  const handleMarkNotified = async (ticketId) => {
+  const handleApprove = async (ticketId) => {
     try {
-      await adminApi.markAuditNotified(ticketId)
+      await adminApi.approveAudit(ticketId)
       toast({
-        title: 'Marcado como notificado',
-        description: `Ticket #${ticketId} marcado como revisado`
+        title: '✅ Auditoría aprobada',
+        description: `Ticket #${ticketId} aprobado. El operador será notificado.`
       })
       fetchAuditTickets()
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo marcar el ticket',
+        description: 'No se pudo aprobar la auditoría',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleReject = async (ticketId) => {
+    try {
+      await adminApi.rejectAudit(ticketId)
+      toast({
+        title: '⚠️ Auditoría rechazada',
+        description: `Ticket #${ticketId} rechazado. El operador será notificado.`
+      })
+      fetchAuditTickets()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo rechazar la auditoría',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleDelete = async (ticketId) => {
+    if (!confirm(`¿Estás seguro de eliminar la solicitud de auditoría del ticket #${ticketId}?`)) {
+      return
+    }
+    
+    try {
+      await adminApi.deleteAudit(ticketId)
+      toast({
+        title: '🗑️ Auditoría eliminada',
+        description: `Solicitud de auditoría del ticket #${ticketId} eliminada de la base de datos.`
+      })
+      fetchAuditTickets()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar la auditoría',
         variant: 'destructive'
       })
     }
@@ -75,31 +113,16 @@ export default function AuditTickets() {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total para Auditar</CardTitle>
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
             <FileSearch className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{tickets.length}</div>
             <p className="text-xs text-muted-foreground">
-              Tickets pendientes de revisión
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Notificados</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {tickets.filter(t => t.audit_notified).length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Ya revisados
+              Solicitudes totales
             </p>
           </CardContent>
         </Card>
@@ -107,14 +130,44 @@ export default function AuditTickets() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {tickets.filter(t => !t.audit_notified).length}
+              {tickets.filter(t => t.audit_status === 'pending').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Sin revisar
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Aprobadas</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {tickets.filter(t => t.audit_status === 'approved').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Aprobadas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rechazadas</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {tickets.filter(t => t.audit_status === 'rejected').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Rechazadas
             </p>
           </CardContent>
         </Card>
@@ -160,9 +213,20 @@ export default function AuditTickets() {
                             ⚠️ Vencido
                           </span>
                         )}
-                        {ticket.audit_notified && (
+                        {/* Estado de auditoría */}
+                        {ticket.audit_status === 'pending' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            ⏳ Pendiente
+                          </span>
+                        )}
+                        {ticket.audit_status === 'approved' && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ✅ Revisado
+                            ✅ Aprobado
+                          </span>
+                        )}
+                        {ticket.audit_status === 'rejected' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            ❌ Rechazado
                           </span>
                         )}
                       </div>
@@ -195,17 +259,37 @@ export default function AuditTickets() {
 
                     {/* Acciones */}
                     <div className="flex flex-col gap-2">
-                      {!ticket.audit_notified && (
-                        <Button
-                          onClick={() => handleMarkNotified(ticket.ticket_id)}
-                          size="sm"
-                          variant="outline"
-                          className="whitespace-nowrap"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Marcar Revisado
-                        </Button>
+                      {ticket.audit_status === 'pending' && (
+                        <>
+                          <Button
+                            onClick={() => handleApprove(ticket.ticket_id)}
+                            size="sm"
+                            variant="default"
+                            className="whitespace-nowrap bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Aprobar
+                          </Button>
+                          <Button
+                            onClick={() => handleReject(ticket.ticket_id)}
+                            size="sm"
+                            variant="destructive"
+                            className="whitespace-nowrap"
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Rechazar
+                          </Button>
+                        </>
                       )}
+                      <Button
+                        onClick={() => handleDelete(ticket.ticket_id)}
+                        size="sm"
+                        variant="outline"
+                        className="whitespace-nowrap text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Eliminar
+                      </Button>
                       <Button
                         onClick={() => window.open(`https://splynx.ipnext.com.ar/admin/support/tickets/view/${ticket.ticket_id}`, '_blank')}
                         size="sm"

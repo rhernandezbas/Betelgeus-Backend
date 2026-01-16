@@ -1266,7 +1266,10 @@ def get_audit_tickets():
                 'response_time_minutes': ticket.response_time_minutes,
                 'audit_requested_at': ticket.audit_requested_at.isoformat() if ticket.audit_requested_at else None,
                 'audit_requested_by': ticket.audit_requested_by,
-                'audit_notified': ticket.audit_notified
+                'audit_notified': ticket.audit_notified,
+                'audit_status': ticket.audit_status,
+                'audit_reviewed_at': ticket.audit_reviewed_at.isoformat() if ticket.audit_reviewed_at else None,
+                'audit_reviewed_by': ticket.audit_reviewed_by
             })
         
         return jsonify({
@@ -1305,6 +1308,144 @@ def mark_audit_notified(ticket_id):
         
     except Exception as e:
         logger.error(f"Error marking audit notified for ticket {ticket_id}: {e}")
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/tickets/<ticket_id>/approve-audit', methods=['POST'])
+def approve_audit(ticket_id):
+    """Approve audit request for a ticket."""
+    try:
+        from datetime import datetime
+        from flask import session
+        
+        ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
+        
+        if not ticket:
+            return jsonify({
+                'success': False,
+                'error': 'Ticket no encontrado'
+            }), 404
+        
+        # Marcar como aprobado
+        ticket.audit_status = 'approved'
+        ticket.audit_reviewed_at = datetime.now()
+        ticket.audit_reviewed_by = session.get('user_id')
+        ticket.audit_notified = True
+        
+        db.session.commit()
+        
+        log_audit(
+            action='approve_audit',
+            entity_type='ticket',
+            entity_id=ticket_id,
+            notes=f"Admin aprobó auditoría para ticket {ticket_id}"
+        )
+        
+        logger.info(f"✅ Auditoría aprobada para ticket {ticket_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Auditoría aprobada'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error approving audit for ticket {ticket_id}: {e}")
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/tickets/<ticket_id>/reject-audit', methods=['POST'])
+def reject_audit(ticket_id):
+    """Reject audit request for a ticket."""
+    try:
+        from datetime import datetime
+        from flask import session
+        
+        ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
+        
+        if not ticket:
+            return jsonify({
+                'success': False,
+                'error': 'Ticket no encontrado'
+            }), 404
+        
+        # Marcar como rechazado
+        ticket.audit_status = 'rejected'
+        ticket.audit_reviewed_at = datetime.now()
+        ticket.audit_reviewed_by = session.get('user_id')
+        ticket.audit_notified = True
+        
+        db.session.commit()
+        
+        log_audit(
+            action='reject_audit',
+            entity_type='ticket',
+            entity_id=ticket_id,
+            notes=f"Admin rechazó auditoría para ticket {ticket_id}"
+        )
+        
+        logger.info(f"⚠️ Auditoría rechazada para ticket {ticket_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Auditoría rechazada'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error rejecting audit for ticket {ticket_id}: {e}")
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/tickets/<ticket_id>/delete-audit', methods=['DELETE'])
+def delete_audit(ticket_id):
+    """Delete audit request for a ticket (reset audit fields)."""
+    try:
+        ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
+        
+        if not ticket:
+            return jsonify({
+                'success': False,
+                'error': 'Ticket no encontrado'
+            }), 404
+        
+        # Resetear campos de auditoría
+        ticket.audit_requested = False
+        ticket.audit_notified = False
+        ticket.audit_requested_at = None
+        ticket.audit_requested_by = None
+        ticket.audit_status = 'pending'
+        ticket.audit_reviewed_at = None
+        ticket.audit_reviewed_by = None
+        
+        db.session.commit()
+        
+        log_audit(
+            action='delete_audit',
+            entity_type='ticket',
+            entity_id=ticket_id,
+            notes=f"Admin eliminó solicitud de auditoría para ticket {ticket_id}"
+        )
+        
+        logger.info(f"🗑️ Auditoría eliminada para ticket {ticket_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Solicitud de auditoría eliminada'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error deleting audit for ticket {ticket_id}: {e}")
         db.session.rollback()
         return jsonify({
             'success': False,

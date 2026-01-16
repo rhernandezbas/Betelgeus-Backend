@@ -517,20 +517,39 @@ export default function OperatorView() {
                         {new Date(ticket.assigned_at).toLocaleString()}
                       </td>
                       <td className="p-2">
-                        {ticket.exceeded_threshold && (
-                          <Button
-                            onClick={() => {
-                              setSelectedTicketForAudit(ticket)
-                              setAuditModalOpen(true)
-                            }}
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                          >
-                            <FileSearch className="h-3 w-3 mr-1" />
-                            Auditar
-                          </Button>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          {/* Mostrar estado de auditoría si existe */}
+                          {ticket.audit_requested && ticket.audit_status === 'approved' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✅ Revisado
+                            </span>
+                          )}
+                          {ticket.audit_requested && ticket.audit_status === 'rejected' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              ❌ Rechazado
+                            </span>
+                          )}
+                          {ticket.audit_requested && ticket.audit_status === 'pending' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              ⏳ En revisión
+                            </span>
+                          )}
+                          {/* Botón Auditar solo si no ha solicitado auditoría o fue rechazado */}
+                          {ticket.exceeded_threshold && (!ticket.audit_requested || ticket.audit_status === 'rejected') && (
+                            <Button
+                              onClick={() => {
+                                setSelectedTicketForAudit(ticket)
+                                setAuditModalOpen(true)
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                            >
+                              <FileSearch className="h-3 w-3 mr-1" />
+                              Auditar
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
