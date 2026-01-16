@@ -496,13 +496,20 @@ export default function OperatorView() {
                       <td className="p-2">{ticket.cliente}</td>
                       <td className="p-2 max-w-xs truncate">{ticket.asunto}</td>
                       <td className="p-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          ticket.estado === 'Cerrado' ? 'bg-green-100 text-green-800' :
-                          ticket.estado === 'Abierto' ? 'bg-orange-100 text-orange-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {ticket.estado}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            ticket.estado === 'Cerrado' ? 'bg-green-100 text-green-800' :
+                            ticket.estado === 'Abierto' ? 'bg-orange-100 text-orange-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {ticket.estado}
+                          </span>
+                          {ticket.exceeded_threshold && !ticket.is_closed && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              ⚠️ Vencido
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-2">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

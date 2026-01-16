@@ -1411,7 +1411,7 @@ def reject_audit(ticket_id):
 
 @admin_bp.route('/tickets/<ticket_id>/delete-audit', methods=['DELETE'])
 def delete_audit(ticket_id):
-    """Delete ticket completely from database."""
+    """Reset audit fields and exceeded_threshold for a ticket (mantiene ticket en BD para observabilidad)."""
     try:
         ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
         
@@ -1421,26 +1421,34 @@ def delete_audit(ticket_id):
                 'error': 'Ticket no encontrado'
             }), 404
         
-        # Eliminar el ticket completamente de la BD
-        db.session.delete(ticket)
+        # Resetear campos de auditoría y exceeded_threshold
+        ticket.audit_requested = False
+        ticket.audit_notified = False
+        ticket.audit_requested_at = None
+        ticket.audit_requested_by = None
+        ticket.audit_status = None
+        ticket.audit_reviewed_at = None
+        ticket.audit_reviewed_by = None
+        ticket.exceeded_threshold = False  # Resetear también el threshold
+        
         db.session.commit()
         
         log_audit(
-            action='delete_ticket',
+            action='reset_audit',
             entity_type='ticket',
             entity_id=ticket_id,
-            notes=f"Admin eliminó ticket {ticket_id} completamente de la base de datos"
+            notes=f"Admin reseteó auditoría y exceeded_threshold del ticket {ticket_id} (ticket mantenido para observabilidad)"
         )
         
-        logger.info(f"🗑️ Ticket {ticket_id} eliminado completamente de la BD")
+        logger.info(f"🔄 Ticket {ticket_id}: auditoría y exceeded_threshold reseteados (ticket mantenido en BD)")
         
         return jsonify({
             'success': True,
-            'message': 'Ticket eliminado completamente de la base de datos'
+            'message': 'Auditoría y estado de vencimiento reseteados (ticket mantenido para observabilidad)'
         }), 200
         
     except Exception as e:
-        logger.error(f"Error deleting ticket {ticket_id}: {e}")
+        logger.error(f"Error resetting audit for ticket {ticket_id}: {e}")
         db.session.rollback()
         return jsonify({
             'success': False,
