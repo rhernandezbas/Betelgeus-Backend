@@ -1046,7 +1046,12 @@ def get_incidents():
                 'is_closed': incident.is_closed,
                 'updated_at': None,
                 'response_time_minutes': incident.response_time_minutes,
-                'exceeded_threshold': incident.exceeded_threshold or False
+                'exceeded_threshold': incident.exceeded_threshold or False,
+                'audit_requested': incident.audit_requested or False,
+                'audit_status': incident.audit_status or 'pending',
+                'audit_notified': incident.audit_notified or False,
+                'audit_requested_at': incident.audit_requested_at.isoformat() if incident.audit_requested_at else None,
+                'audit_requested_by': incident.audit_requested_by
             }
             
             incidents_data.append(incident_dict)
