@@ -1414,7 +1414,7 @@ def reject_audit(ticket_id):
 
 @admin_bp.route('/tickets/<ticket_id>/delete-audit', methods=['DELETE'])
 def delete_audit(ticket_id):
-    """Delete audit request for a ticket (reset audit fields)."""
+    """Delete ticket completely from database."""
     try:
         ticket = IncidentsDetection.query.filter_by(Ticket_ID=ticket_id).first()
         
@@ -1424,33 +1424,26 @@ def delete_audit(ticket_id):
                 'error': 'Ticket no encontrado'
             }), 404
         
-        # Resetear campos de auditoría
-        ticket.audit_requested = False
-        ticket.audit_notified = False
-        ticket.audit_requested_at = None
-        ticket.audit_requested_by = None
-        ticket.audit_status = 'pending'
-        ticket.audit_reviewed_at = None
-        ticket.audit_reviewed_by = None
-        
+        # Eliminar el ticket completamente de la BD
+        db.session.delete(ticket)
         db.session.commit()
         
         log_audit(
-            action='delete_audit',
+            action='delete_ticket',
             entity_type='ticket',
             entity_id=ticket_id,
-            notes=f"Admin eliminó solicitud de auditoría para ticket {ticket_id}"
+            notes=f"Admin eliminó ticket {ticket_id} completamente de la base de datos"
         )
         
-        logger.info(f"🗑️ Auditoría eliminada para ticket {ticket_id}")
+        logger.info(f"🗑️ Ticket {ticket_id} eliminado completamente de la BD")
         
         return jsonify({
             'success': True,
-            'message': 'Solicitud de auditoría eliminada'
+            'message': 'Ticket eliminado completamente de la base de datos'
         }), 200
         
     except Exception as e:
-        logger.error(f"Error deleting audit for ticket {ticket_id}: {e}")
+        logger.error(f"Error deleting ticket {ticket_id}: {e}")
         db.session.rollback()
         return jsonify({
             'success': False,
