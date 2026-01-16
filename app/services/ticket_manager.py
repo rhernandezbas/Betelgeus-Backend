@@ -999,21 +999,33 @@ class TicketManager:
                 schedules = OPERATOR_SCHEDULES[assigned_to]
                 operator_name = self.get_operator_name(assigned_to)
                 
-                # Verificar si pasaron 30 minutos desde el fin de algún turno
+                # Verificar si el operador está fuera de su turno
                 should_unassign = False
                 shift_end_time = None
+                is_within_shift = False
                 
+                # Primero verificar si está dentro de algún turno
                 for schedule in schedules:
+                    start_minutes = schedule["start_hour"] * 60 + schedule["start_minute"]
                     end_minutes = schedule["end_hour"] * 60 + schedule["end_minute"]
-                    minutes_after_shift = current_time_minutes - end_minutes
                     
-                    # Si pasaron entre 60 y 90 minutos del fin de turno (1 hora después)
-                    if 60 <= minutes_after_shift <= 90:
-                        should_unassign = True
-                        shift_end_time = f"{schedule['end_hour']:02d}:{schedule['end_minute']:02d}"
-                        logger.info(f"⏰ Operador {operator_name} (ID {assigned_to}): Turno terminó a las {shift_end_time}")
-                        logger.info(f"   Han pasado {minutes_after_shift} minutos desde el fin de turno")
+                    if start_minutes <= current_time_minutes <= end_minutes:
+                        is_within_shift = True
                         break
+                
+                # Si no está en ningún turno, verificar si pasó más de 60 minutos desde el fin del último turno
+                if not is_within_shift:
+                    for schedule in schedules:
+                        end_minutes = schedule["end_hour"] * 60 + schedule["end_minute"]
+                        minutes_after_shift = current_time_minutes - end_minutes
+                        
+                        # Si pasaron más de 60 minutos del fin de turno (1 hora después)
+                        if minutes_after_shift >= 60:
+                            should_unassign = True
+                            shift_end_time = f"{schedule['end_hour']:02d}:{schedule['end_minute']:02d}"
+                            logger.info(f"⏰ Operador {operator_name} (ID {assigned_to}): Turno terminó a las {shift_end_time}")
+                            logger.info(f"   Han pasado {minutes_after_shift} minutos desde el fin de turno")
+                            break
                 
                 if should_unassign:
                     # Desasignar ticket (assigned_to = 0 o NULL)
