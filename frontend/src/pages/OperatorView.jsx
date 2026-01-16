@@ -517,7 +517,7 @@ export default function OperatorView() {
                         {new Date(ticket.assigned_at).toLocaleString()}
                       </td>
                       <td className="p-2">
-                        {ticket.exceeded_threshold && !ticket.is_closed && (
+                        {ticket.exceeded_threshold && (
                           <Button
                             onClick={() => {
                               setSelectedTicketForAudit(ticket)
