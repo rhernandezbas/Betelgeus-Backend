@@ -85,12 +85,17 @@ def sync_tickets_status():
                     if updated_at:
                         try:
                             last_update = datetime.strptime(updated_at, '%Y-%m-%d %H:%M:%S')
+                            # Guardar last_update en BD
+                            ticket.last_update = last_update
                         except ValueError:
                             last_update = None
                     
                     # Si no hay updated_at, usar fecha de creación como fallback
                     if not last_update:
                         last_update = parse_date(ticket.Fecha_Creacion)
+                        # Si usamos Fecha_Creacion, también guardarlo en last_update si no existe
+                        if last_update and not ticket.last_update:
+                            ticket.last_update = last_update
                     
                     if last_update:
                         # Usar hora de Argentina para el cálculo
