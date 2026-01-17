@@ -382,13 +382,7 @@ class TicketManager:
         Returns:
             dict: Resumen de la operación con estadísticas
         """
-        # Leer configuración desde BD si no se especifica
-        if threshold_minutes is None:
-            threshold_minutes = ConfigHelper.get_ticket_alert_threshold()
-        
-        TICKET_UPDATE_THRESHOLD_MINUTES = ConfigHelper.get_ticket_update_threshold()
-        TICKET_RENOTIFICATION_INTERVAL_MINUTES = ConfigHelper.get_renotification_interval()
-        
+        from app.utils.config_helper import ConfigHelper
         from app.utils.constants import (
             SPLYNX_SUPPORT_GROUP_ID,
             TIMEZONE
@@ -398,6 +392,13 @@ class TicketManager:
         from datetime import datetime, timedelta
         from collections import defaultdict
         import pytz
+        
+        # Leer configuración desde BD si no se especifica
+        if threshold_minutes is None:
+            threshold_minutes = ConfigHelper.get_ticket_alert_threshold()
+        
+        TICKET_UPDATE_THRESHOLD_MINUTES = ConfigHelper.get_ticket_update_threshold()
+        TICKET_RENOTIFICATION_INTERVAL_MINUTES = ConfigHelper.get_renotification_interval()
         
         resultado = {
             "total_tickets_revisados": 0,

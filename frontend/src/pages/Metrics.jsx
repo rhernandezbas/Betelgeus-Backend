@@ -188,17 +188,27 @@ export default function Metrics() {
 
     // Filtrar por fecha (manejar formato DD-MM-YYYY)
     if (filters.startDate) {
-      const startDate = new Date(filters.startDate)
+      // Crear fecha de inicio a las 00:00:00
+      const startDate = new Date(filters.startDate + 'T00:00:00')
       filtered = filtered.filter(t => {
         const ticketDate = parseDate(t.created_at)
-        return ticketDate && ticketDate >= startDate
+        if (!ticketDate) return false
+        // Comparar solo la fecha (ignorar hora)
+        const ticketDateOnly = new Date(ticketDate.getFullYear(), ticketDate.getMonth(), ticketDate.getDate())
+        const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+        return ticketDateOnly >= startDateOnly
       })
     }
     if (filters.endDate) {
+      // Crear fecha de fin a las 23:59:59
       const endDate = new Date(filters.endDate + 'T23:59:59')
       filtered = filtered.filter(t => {
         const ticketDate = parseDate(t.created_at)
-        return ticketDate && ticketDate <= endDate
+        if (!ticketDate) return false
+        // Comparar solo la fecha (ignorar hora)
+        const ticketDateOnly = new Date(ticketDate.getFullYear(), ticketDate.getMonth(), ticketDate.getDate())
+        const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+        return ticketDateOnly <= endDateOnly
       })
     }
 
