@@ -6,7 +6,7 @@ Estas funciones son versiones de las funciones de views.py que no dependen de Fl
 from app.services.splynx_services import SplynxServices
 from app.services.ticket_manager import TicketManager
 from app.services.selenium_multi_departamentos import SeleniumMultiDepartamentos
-from app.utils.constants import DEPARTAMENTOS, TICKET_ALERT_THRESHOLD_MINUTES
+from app.utils.constants import DEPARTAMENTOS
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

@@ -46,7 +46,13 @@ class TicketManager:
             int: ID de la persona a asignar según el horario de asignación de BD
         """
         from app.interface.interfaces import AssignmentTrackerInterface
-        from app.utils.constants import TURNO_TARDE_IDS, TURNO_DIA_IDS, PERSONA_GUARDIA_FINDE, FINDE_HORA_INICIO, FINDE_HORA_FIN
+        from app.utils.constants import TURNO_TARDE_IDS, TURNO_DIA_IDS
+        from app.utils.config_helper import ConfigHelper
+        
+        # Obtener configuración de fin de semana desde BD
+        PERSONA_GUARDIA_FINDE = ConfigHelper.get_int('PERSONA_GUARDIA_FINDE', 10)
+        FINDE_HORA_INICIO = ConfigHelper.get_int('FINDE_HORA_INICIO', 9)
+        FINDE_HORA_FIN = ConfigHelper.get_int('FINDE_HORA_FIN', 21)
         
         # Obtener hora actual en Argentina
         tz_argentina = pytz.timezone('America/Argentina/Buenos_Aires')
@@ -57,7 +63,7 @@ class TicketManager:
         
         # Verificar si es fin de semana (sábado=5, domingo=6)
         if day_of_week >= 5:
-            # Fin de semana: solo asignar a persona de guardia en horario 9-21hs
+            # Fin de semana: solo asignar a persona de guardia en horario configurado
             if FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN:
                 logger.info(f"📅 Fin de semana - Asignando a persona de guardia (ID {PERSONA_GUARDIA_FINDE}) - {current_hour}:{current_minute:02d}")
                 return PERSONA_GUARDIA_FINDE
@@ -310,8 +316,8 @@ class TicketManager:
                 )
                 
                 # Enviar notificación por WhatsApp (si está habilitado)
-                from app.utils.constants import WHATSAPP_ENABLED
-                if WHATSAPP_ENABLED:
+                from app.utils.config_helper import ConfigHelper
+                if ConfigHelper.is_whatsapp_enabled():
                     from app.services.whatsapp_service import WhatsAppService
                     whatsapp_service = WhatsAppService()
                     
@@ -574,9 +580,9 @@ class TicketManager:
                     resultado["errores"] += 1
             
             # Enviar alertas agrupadas por operador (si WhatsApp está habilitado)
-            from app.utils.constants import WHATSAPP_ENABLED
+            from app.utils.config_helper import ConfigHelper
             
-            if WHATSAPP_ENABLED:
+            if ConfigHelper.is_whatsapp_enabled():
                 logger.info("="*60)
                 logger.info(f"📤 ENVIANDO ALERTAS AGRUPADAS")
                 logger.info("="*60)
@@ -662,15 +668,14 @@ class TicketManager:
         Returns:
             dict: Resumen de la operación con estadísticas
         """
-        from app.utils.constants import (
-            OPERATOR_SCHEDULES,
-            END_OF_SHIFT_NOTIFICATION_MINUTES,
-            SPLYNX_SUPPORT_GROUP_ID,
-            TIMEZONE
-        )
+        from app.utils.constants import SPLYNX_SUPPORT_GROUP_ID, TIMEZONE
+        from app.utils.config_helper import ConfigHelper
         from app.services.whatsapp_service import WhatsAppService
+        from app.models.models import OperatorConfig
         from datetime import datetime, timedelta
         import pytz
+        
+        END_OF_SHIFT_NOTIFICATION_MINUTES = ConfigHelper.get_end_of_shift_notification()
         
         resultado = {
             "operadores_notificados": 0,
@@ -701,8 +706,17 @@ class TicketManager:
             # Inicializar servicio de WhatsApp
             whatsapp_service = WhatsAppService()
             
+            # Obtener todos los operadores activos desde BD
+            operators = OperatorConfig.query.filter_by(is_active=True).all()
+            
             # Verificar cada operador
-            for person_id, schedules in OPERATOR_SCHEDULES.items():
+            for operator in operators:
+                person_id = operator.person_id
+                # Obtener horarios desde BD para el día actual
+                schedules = ScheduleHelper.get_operator_schedules(person_id, 'work', now.weekday())
+                
+                if not schedules:
+                    continue
                 operator_name = whatsapp_service.get_operator_name(person_id)
                 
                 # Verificar cada turno del operador
@@ -884,10 +898,10 @@ class TicketManager:
                         )
                         
                         # Enviar notificación por WhatsApp (si está habilitado)
-                        from app.utils.constants import WHATSAPP_ENABLED
+                        from app.utils.config_helper import ConfigHelper
                         notificacion_enviada = False
                         
-                        if WHATSAPP_ENABLED:
+                        if ConfigHelper.is_whatsapp_enabled():
                             # Obtener información del cliente para la notificación
                             customer_info = self.splynx.search_customer(str(customer_id))
                             customer_name = customer_info.get('name', 'Cliente desconocido') if customer_info else 'Cliente desconocido'
@@ -955,7 +969,6 @@ class TicketManager:
     
     def auto_unassign_after_shift(self):
         """Desasigna tickets automáticamente 1 hora después del fin de turno del operador"""
-        from app.utils.constants import OPERATOR_SCHEDULES
         import pytz
         from datetime import datetime
         
@@ -992,11 +1005,12 @@ class TicketManager:
                 assigned_to = ticket.get('assigned_to')
                 subject = ticket.get('subject', 'Sin asunto')
                 
-                # Verificar si el operador tiene horarios definidos
-                if assigned_to not in OPERATOR_SCHEDULES:
+                # Obtener horarios desde BD para el día actual
+                schedules = ScheduleHelper.get_operator_schedules(assigned_to, 'work', now.weekday())
+                
+                if not schedules:
                     continue
                 
-                schedules = OPERATOR_SCHEDULES[assigned_to]
                 operator_name = self.get_operator_name(assigned_to)
                 
                 # Verificar si el operador está fuera de su turno

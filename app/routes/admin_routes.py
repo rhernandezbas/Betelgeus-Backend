@@ -645,6 +645,8 @@ def get_config_value(key):
 def update_config(key):
     """Update or create system configuration."""
     try:
+        from app.utils.config_helper import ConfigHelper
+        
         data = request.get_json()
         value = data.get('value')
         updated_by = data.get('updated_by', 'admin')
@@ -662,6 +664,10 @@ def update_config(key):
         )
         
         if config:
+            # Limpiar caché de configuración para que se lea el nuevo valor
+            ConfigHelper.clear_cache()
+            logger.info(f"✅ Configuración '{key}' actualizada y caché limpiado")
+            
             log_audit(
                 action='update_config',
                 entity_type='config',

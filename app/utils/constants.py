@@ -29,14 +29,6 @@ DEPARTAMENTOS = {
 # CONFIGURACIÓN DE EVOLUTION API / WHATSAPP
 # ============================================================================
 
-# Feature flag para habilitar/deshabilitar todas las notificaciones de WhatsApp
-# True = Envía notificaciones | False = No envía notificaciones
-WHATSAPP_ENABLED = True
-
-# Feature flag para pausar/reanudar el sistema completo
-# True = Sistema pausado (no asigna tickets ni procesa) | False = Sistema activo
-SYSTEM_PAUSED = False
-
 # IMPORTANTE: Verificar que esta URL sea accesible desde el servidor
 # Si hay error de DNS, verificar:
 # 1. La URL es correcta
@@ -50,35 +42,14 @@ EVOLUTION_INSTANCE_NAME = "test21"
 # CONFIGURACIÓN DE OPERADORES
 # ============================================================================
 
-# Persona de guardia para fin de semana (sábado y domingo)
-PERSONA_GUARDIA_FINDE = 10  # Gabriel Romero
-
-# Horario de trabajo en fin de semana (sábado y domingo)
-FINDE_HORA_INICIO = 9   # 9:00 AM
-FINDE_HORA_FIN = 21     # 9:00 PM
-
-# Mapeo de IDs de personas a números de WhatsApp
-PERSON_WHATSAPP_NUMBERS = {
-    10: "541159300124",  # Gabriel Romero
-    27: "541152596634",  # Luis Sarco
-    37: "542324531873",  # Cesareo Suarez
-    38: "542324531872"   # Yaini Al
-}
-
-"""PERSON_WHATSAPP_NUMBERS = {
-    10: "541178547218",  # Gabriel Romero
-    27: "541178547218",  # Luis Sarco
-    37: "541178547218",  # Cesareo Suarez
-    38: "541178547218"   # Yaini Al
-}
-"""
-# Nombres de los operadores
-PERSON_NAMES = {
-    10: "Gabriel Romero",
-    27: "Luis Sarco",
-    37: "Cesareo Suarez",
-    38: "Yaini Al"
-}
+# NOTA: Los siguientes valores ahora se leen desde la base de datos:
+# - WHATSAPP_ENABLED → ConfigHelper.is_whatsapp_enabled()
+# - SYSTEM_PAUSED → SystemControl.is_paused()
+# - PERSONA_GUARDIA_FINDE → ConfigHelper.get_int('PERSONA_GUARDIA_FINDE')
+# - FINDE_HORA_INICIO/FIN → ConfigHelper.get_int()
+# - PERSON_WHATSAPP_NUMBERS → OperatorConfig.whatsapp_number
+# - PERSON_NAMES → OperatorConfig.name
+# Usar el panel de administración para modificar estos valores.
 
 # IDs de personas asignables
 ASSIGNABLE_PERSONS = [10, 27, 37, 38]
@@ -94,49 +65,30 @@ TURNO_DIA_IDS = [10, 37]  # Gabriel Romero, Cesareo Suarez
 # HORARIOS DE TRABAJO
 # ============================================================================
 
-# Horarios de trabajo de operadores (en formato 24h)
-# Formato: {person_id: [{"start": "HH:MM", "end": "HH:MM"}]}
-# Lunes a Viernes
-OPERATOR_SCHEDULES = {
-    10: [  # Gabriel Romero
-        {"start": "08:00", "end": "16:00"}   # Turno diurno
-    ],
-    27: [  # Luis Sarco
-        {"start": "10:00", "end": "17:20"}   # Turno único
-    ],
-    37: [  # Cesareo Suarez
-        {"start": "08:00", "end": "15:00"}   # Turno diurno
-    ],
-    38: [  # Yaini Al
-        {"start": "16:00", "end": "23:00"}   # Turno tarde/noche
-    ]
-}
+# NOTA: Los horarios de operadores ahora se leen desde la BD:
+# - OPERATOR_SCHEDULES → ScheduleHelper.get_operator_schedules()
+# - Tabla: operator_schedule
+# - Tipos: 'work' (horario laboral), 'assignment' (asignación), 'alert' (notificaciones)
+# Usar el panel de administración para modificar horarios.
 
 # ============================================================================
 # CONFIGURACIÓN DE ALERTAS Y NOTIFICACIONES
 # ============================================================================
 
-# Tiempo límite en minutos para alertar sobre tickets asignados
-TICKET_ALERT_THRESHOLD_MINUTES = 60
-
-# Tiempo mínimo desde última actualización para enviar alerta (en minutos)
-# Si el ticket fue actualizado hace menos de este tiempo, no se envía alerta
-TICKET_UPDATE_THRESHOLD_MINUTES = 60
-
-# Intervalo mínimo entre notificaciones del mismo ticket (en minutos)
-# No se volverá a notificar un ticket si ya fue notificado hace menos de este tiempo
-TICKET_RENOTIFICATION_INTERVAL_MINUTES = 60
-
-# Minutos antes del fin de turno para enviar notificación de resumen
-END_OF_SHIFT_NOTIFICATION_MINUTES = 60  # 1 hora antes
+# NOTA: Los siguientes valores ahora se leen desde la BD usando ConfigHelper:
+# - TICKET_ALERT_THRESHOLD_MINUTES → ConfigHelper.get_ticket_alert_threshold()
+# - TICKET_UPDATE_THRESHOLD_MINUTES → ConfigHelper.get_ticket_update_threshold()
+# - TICKET_RENOTIFICATION_INTERVAL_MINUTES → ConfigHelper.get_renotification_interval()
+# - END_OF_SHIFT_NOTIFICATION_MINUTES → ConfigHelper.get_end_of_shift_notification()
+# - OUTHOUSE_NO_ALERT_MINUTES → ConfigHelper.get_outhouse_no_alert_minutes()
+# Usar el panel de administración para modificar estos valores.
 
 # ============================================================================
 # CONFIGURACIÓN DE ESTADOS DE TICKETS
 # ============================================================================
 
-# Estado "OutHouse" - tickets en este estado no alertan por 2 horas
+# Estado "OutHouse" - tickets en este estado no alertan (tiempo configurable en BD)
 OUTHOUSE_STATUS_ID = "6"
-OUTHOUSE_NO_ALERT_MINUTES = 120  # 2 horas
 
 # ============================================================================
 # CONFIGURACIÓN DE SPLYNX

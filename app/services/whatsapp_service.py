@@ -8,9 +8,7 @@ from app.services.evolution_api import EvolutionAPIService
 from app.utils.constants import (
     EVOLUTION_API_BASE_URL,
     EVOLUTION_API_KEY,
-    EVOLUTION_INSTANCE_NAME,
-    PERSON_WHATSAPP_NUMBERS,
-    PERSON_NAMES
+    EVOLUTION_INSTANCE_NAME
 )
 from app.utils.logger import get_logger
 
@@ -30,7 +28,7 @@ class WhatsAppService:
     
     def get_operator_phone(self, person_id: int) -> Optional[str]:
         """
-        Obtiene el número de WhatsApp de un operador
+        Obtiene el número de WhatsApp de un operador desde la BD
         
         Args:
             person_id: ID del operador
@@ -38,11 +36,13 @@ class WhatsAppService:
         Returns:
             str: Número de WhatsApp o None si no existe
         """
-        return PERSON_WHATSAPP_NUMBERS.get(person_id)
+        from app.models.models import OperatorConfig
+        operator = OperatorConfig.query.filter_by(person_id=person_id).first()
+        return operator.whatsapp_number if operator else None
     
     def get_operator_name(self, person_id: int) -> str:
         """
-        Obtiene el nombre de un operador
+        Obtiene el nombre de un operador desde la BD
         
         Args:
             person_id: ID del operador
@@ -50,7 +50,9 @@ class WhatsAppService:
         Returns:
             str: Nombre del operador
         """
-        return PERSON_NAMES.get(person_id, f"Operador {person_id}")
+        from app.models.models import OperatorConfig
+        operator = OperatorConfig.query.filter_by(person_id=person_id).first()
+        return operator.name if operator else f"Operador {person_id}"
     
     def send_overdue_tickets_alert(self, person_id: int, tickets_list: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -351,7 +353,7 @@ _Sistema de Tickets Splynx_"""
     
     def validate_operator_config(self, person_id: int) -> Dict[str, Any]:
         """
-        Valida que un operador tenga toda la configuración necesaria
+        Valida que un operador tenga toda la configuración necesaria desde la BD
         
         Args:
             person_id: ID del operador
@@ -359,21 +361,35 @@ _Sistema de Tickets Splynx_"""
         Returns:
             dict: Estado de la configuración
         """
-        return {
-            "person_id": person_id,
-            "has_phone": person_id in PERSON_WHATSAPP_NUMBERS,
-            "has_name": person_id in PERSON_NAMES,
-            "phone_number": PERSON_WHATSAPP_NUMBERS.get(person_id),
-            "name": PERSON_NAMES.get(person_id),
-            "is_valid": person_id in PERSON_WHATSAPP_NUMBERS and person_id in PERSON_NAMES
-        }
+        from app.models.models import OperatorConfig
+        operator = OperatorConfig.query.filter_by(person_id=person_id).first()
+        
+        if operator:
+            return {
+                "person_id": person_id,
+                "has_phone": bool(operator.whatsapp_number),
+                "has_name": bool(operator.name),
+                "phone_number": operator.whatsapp_number,
+                "name": operator.name,
+                "is_valid": bool(operator.whatsapp_number and operator.name)
+            }
+        else:
+            return {
+                "person_id": person_id,
+                "has_phone": False,
+                "has_name": False,
+                "phone_number": None,
+                "name": None,
+                "is_valid": False
+            }
     
     def get_all_operators_config(self) -> List[Dict[str, Any]]:
         """
-        Obtiene la configuración de todos los operadores
+        Obtiene la configuración de todos los operadores desde la BD
         
         Returns:
             list: Lista con configuración de cada operador
         """
-        all_person_ids = set(list(PERSON_WHATSAPP_NUMBERS.keys()) + list(PERSON_NAMES.keys()))
-        return [self.validate_operator_config(pid) for pid in all_person_ids]
+        from app.models.models import OperatorConfig
+        all_operators = OperatorConfig.query.all()
+        return [self.validate_operator_config(op.person_id) for op in all_operators]
