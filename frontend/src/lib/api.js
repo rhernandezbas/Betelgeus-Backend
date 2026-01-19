@@ -69,4 +69,12 @@ export const logsApi = {
   clearLogs: () => api.post('/api/logs/clear'),
 };
 
+export const deviceAnalysisApi = {
+  analyzeComplete: (data) => api.post('/api/device-analysis/analyze-complete', data),
+  getMetrics: (params) => api.get('/api/device-analysis/metrics', { params }),
+  submitFeedback: (analysisId, data) => api.post(`/api/device-analysis/feedback/${analysisId}`, data),
+  getHistory: (params) => api.get('/api/device-analysis/history', { params }),
+  getStats: () => api.get('/api/device-analysis/stats'),
+};
+
 export default api;

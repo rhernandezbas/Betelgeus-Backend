@@ -5,7 +5,8 @@ import {
   BarChart3,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Radio
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast'
 
 const navigation = [
   { name: 'Dashboard', href: '/operator-view', icon: LayoutDashboard },
+  { name: 'Análisis de Dispositivos', href: '/operator-view/device-analysis', icon: Radio },
 ]
 
 export default function OperatorLayout() {

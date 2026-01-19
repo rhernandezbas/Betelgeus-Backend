@@ -235,3 +235,69 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'created_by': self.created_by
         }
+
+
+class DeviceAnalysis(db.Model):
+    """Almacena análisis de dispositivos con respuestas de IA y feedback de usuarios"""
+    __tablename__ = 'device_analysis'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_ip = db.Column(db.String(50), nullable=False, index=True)
+    device_name = db.Column(db.String(200))
+    device_model = db.Column(db.String(100))
+    analysis_type = db.Column(db.String(50), nullable=False)  # 'complete' o 'metrics'
+    
+    # Datos de la consulta
+    query_params = db.Column(JSON)  # Parámetros enviados en la consulta
+    
+    # Respuesta de la API
+    api_response = db.Column(JSON)  # Respuesta completa del endpoint
+    llm_summary = db.Column(db.Text)  # Resumen del LLM extraído
+    ping_data = db.Column(JSON)  # Datos de ping
+    metrics_data = db.Column(JSON)  # Métricas del dispositivo
+    site_survey_data = db.Column(JSON)  # Datos de site survey
+    
+    # Estado de la consulta
+    success = db.Column(db.Boolean, default=True)
+    error_message = db.Column(db.Text)  # Si hubo error
+    execution_time_ms = db.Column(db.Integer)  # Tiempo de ejecución
+    
+    # Feedback del usuario
+    feedback_rating = db.Column(db.String(20))  # 'helpful', 'not_helpful', 'incorrect'
+    feedback_comment = db.Column(db.Text)  # Comentario del usuario
+    feedback_at = db.Column(db.DateTime)  # Cuándo se dio feedback
+    
+    # Auditoría
+    requested_by = db.Column(db.String(100))  # Usuario que hizo la consulta
+    requested_by_role = db.Column(db.String(50))  # 'admin' o 'operator'
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    ip_address = db.Column(db.String(50))  # IP desde donde se hizo la consulta
+    
+    def to_dict(self):
+        """Convert to dictionary"""
+        return {
+            'id': self.id,
+            'device_ip': self.device_ip,
+            'device_name': self.device_name,
+            'device_model': self.device_model,
+            'analysis_type': self.analysis_type,
+            'query_params': self.query_params,
+            'api_response': self.api_response,
+            'llm_summary': self.llm_summary,
+            'ping_data': self.ping_data,
+            'metrics_data': self.metrics_data,
+            'site_survey_data': self.site_survey_data,
+            'success': self.success,
+            'error_message': self.error_message,
+            'execution_time_ms': self.execution_time_ms,
+            'feedback_rating': self.feedback_rating,
+            'feedback_comment': self.feedback_comment,
+            'feedback_at': self.feedback_at.isoformat() if self.feedback_at else None,
+            'requested_by': self.requested_by,
+            'requested_by_role': self.requested_by_role,
+            'requested_at': self.requested_at.isoformat() if self.requested_at else None,
+            'ip_address': self.ip_address
+        }
+    
+    def __repr__(self):
+        return f'<DeviceAnalysis id: {self.id}, device_ip: {self.device_ip}, type: {self.analysis_type}, success: {self.success}>'

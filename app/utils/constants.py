@@ -3,6 +3,8 @@ Constantes centralizadas de la aplicación
 Todas las configuraciones y constantes deben estar aquí
 """
 
+import os
+
 # ============================================================================
 # CONFIGURACIÓN DE SELENIUM / GESTION REAL
 # ============================================================================
@@ -107,8 +109,10 @@ TIMEZONE = "America/Argentina/Buenos_Aires"
 # CONFIGURACIÓN DE BASE DE DATOS
 # ============================================================================
 
-DB_USER = "mysql"
-DB_PASSWORD = "1234"
-DB_HOST = "190.7.234.37"
-DB_PORT = "3025"
-DB_NAME = "ipnext"
+DB_HOST = os.getenv('DB_HOST', '190.7.234.37')
+DB_PORT = os.getenv('DB_PORT', '3025')
+DB_NAME = os.getenv('DB_NAME', 'ipnext')
+DB_USER = os.getenv('DB_USER', 'mysql')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '1234')
+
+DEVICE_ANALYSIS_API_URL = os.getenv('DEVICE_ANALYSIS_API_URL', 'http://190.7.234.37:7444')

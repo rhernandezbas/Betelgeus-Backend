@@ -12,6 +12,7 @@ import Metrics from './pages/Metrics'
 import Users from './pages/Users'
 import LogsViewer from './pages/LogsViewer'
 import OperatorView from './pages/OperatorView'
+import DeviceAnalysis from './pages/DeviceAnalysis'
 import Login from './pages/Login'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
 import { Toaster } from './components/ui/toaster'
@@ -43,6 +44,7 @@ function App() {
           <Route path="audit" element={<AuditLogs />} />
           <Route path="audit-tickets" element={<AuditTickets />} />
           <Route path="reassignment-history" element={<ReassignmentHistory />} />
+          <Route path="device-analysis" element={<DeviceAnalysis />} />
         </Route>
 
         {/* Rutas protegidas para operadores */}
@@ -52,6 +54,7 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<OperatorView />} />
+          <Route path="device-analysis" element={<DeviceAnalysis />} />
         </Route>
       </Routes>
       <Toaster />

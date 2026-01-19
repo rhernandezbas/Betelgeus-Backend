@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRightLeft,
-  FileSearch
+  FileSearch,
+  Radio
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Gestión de Operadores', href: '/operators-management', icon: Users },
+  { name: 'Análisis de Dispositivos', href: '/device-analysis', icon: Radio },
   { name: 'Mensajes', href: '/messages', icon: MessageSquare },
   { name: 'Métricas', href: '/metrics', icon: BarChart3 },
   { name: 'Usuarios', href: '/users', icon: UserCog },
