@@ -24,7 +24,8 @@ import {
   MessageSquare,
   TrendingUp,
   Server,
-  Radio
+  Radio,
+  FileText
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -39,6 +40,9 @@ export default function DeviceAnalysis() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [history, setHistory] = useState([])
   const [stats, setStats] = useState(null)
+  const [logs, setLogs] = useState([])
+  const [logsStats, setLogsStats] = useState(null)
+  const [logsLoading, setLogsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('analyze')
   const { toast } = useToast()
 
@@ -51,6 +55,9 @@ export default function DeviceAnalysis() {
       fetchHistory()
     } else if (activeTab === 'stats') {
       fetchStats()
+    } else if (activeTab === 'logs' && userRole === 'admin') {
+      fetchLogs()
+      fetchLogsStats()
     }
   }, [activeTab])
 
@@ -69,6 +76,37 @@ export default function DeviceAnalysis() {
       setStats(response.data.stats || null)
     } catch (error) {
       console.error('Error fetching stats:', error)
+    }
+  }
+
+  const fetchLogs = async () => {
+    setLogsLoading(true)
+    try {
+      const response = await deviceAnalysisApi.getApiLogs({
+        limit: 100,
+        requested_by_role: userRole
+      })
+      setLogs(response.data.logs || [])
+    } catch (error) {
+      console.error('Error fetching logs:', error)
+      toast({
+        title: 'Error',
+        description: 'Error al obtener logs de la API',
+        variant: 'destructive'
+      })
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
+  const fetchLogsStats = async () => {
+    try {
+      const response = await deviceAnalysisApi.getApiLogsStats({
+        requested_by_role: userRole
+      })
+      setLogsStats(response.data || null)
+    } catch (error) {
+      console.error('Error fetching logs stats:', error)
     }
   }
 
@@ -414,6 +452,12 @@ export default function DeviceAnalysis() {
             <BarChart3 className="h-4 w-4" />
             Estadísticas
           </TabsTrigger>
+          {userRole === 'admin' && (
+            <TabsTrigger value="logs" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Logs API
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="analyze" className="space-y-6">
@@ -808,6 +852,100 @@ export default function DeviceAnalysis() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logs" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Logs de la API de Ubiquiti</CardTitle>
+                <CardDescription>Últimos 100 logs del sistema de análisis</CardDescription>
+              </div>
+              <Button onClick={() => { fetchLogs(); fetchLogsStats(); }} variant="outline" size="sm" disabled={logsLoading}>
+                {logsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {logsStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Total Logs</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{logsStats.total_logs || 0}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-red-600">Errores</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-red-600">{logsStats.by_level?.ERROR || 0}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-yellow-600">Warnings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-yellow-600">{logsStats.by_level?.WARNING || 0}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-blue-600">Info</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-blue-600">{logsStats.by_level?.INFO || 0}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {logsLoading ? (
+                  <p className="text-center text-gray-500 py-8">Cargando logs...</p>
+                ) : logs.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No hay logs disponibles</p>
+                ) : (
+                  logs.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className={`border rounded-lg p-3 text-sm font-mono ${
+                        log.level === 'ERROR' ? 'bg-red-50 border-red-200' :
+                        log.level === 'WARNING' ? 'bg-yellow-50 border-yellow-200' :
+                        log.level === 'INFO' ? 'bg-blue-50 border-blue-200' :
+                        'bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                              log.level === 'ERROR' ? 'bg-red-200 text-red-800' :
+                              log.level === 'WARNING' ? 'bg-yellow-200 text-yellow-800' :
+                              log.level === 'INFO' ? 'bg-blue-200 text-blue-800' :
+                              'bg-gray-200 text-gray-800'
+                            }`}>
+                              {log.level}
+                            </span>
+                            <span className="text-xs text-gray-500">{log.timestamp}</span>
+                          </div>
+                          <p className="text-gray-800 break-words">{log.message}</p>
+                          {log.details && (
+                            <pre className="mt-2 text-xs bg-white p-2 rounded border overflow-x-auto">
+                              {JSON.stringify(log.details, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

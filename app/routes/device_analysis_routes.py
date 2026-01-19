@@ -380,3 +380,85 @@ def get_analysis_stats():
             'success': False,
             'error': str(e)
         }), 500
+
+
+@device_analysis_bp.route('/api-logs', methods=['GET'])
+def get_api_logs():
+    """
+    Obtener logs de la API de análisis de dispositivos (solo admin)
+    Proxy al endpoint de logs de la API externa
+    """
+    try:
+        # Verificar que sea admin
+        requested_by_role = request.args.get('requested_by_role', 'unknown')
+        if requested_by_role != 'admin':
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized - Admin only'
+            }), 403
+        
+        # Obtener parámetros opcionales
+        limit = request.args.get('limit', 100)
+        level = request.args.get('level')
+        
+        # Llamar al endpoint de logs de la API
+        params = {'limit': limit}
+        if level:
+            params['level'] = level
+            
+        response = requests.get(
+            f"{DEVICE_ANALYSIS_API_URL}/api/v1/logs",
+            params=params,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'API returned status {response.status_code}'
+            }), response.status_code
+            
+    except Exception as e:
+        logger.error(f"Error getting API logs: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@device_analysis_bp.route('/api-logs/stats', methods=['GET'])
+def get_api_logs_stats():
+    """
+    Obtener estadísticas de logs de la API (solo admin)
+    """
+    try:
+        # Verificar que sea admin
+        requested_by_role = request.args.get('requested_by_role', 'unknown')
+        if requested_by_role != 'admin':
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized - Admin only'
+            }), 403
+        
+        # Llamar al endpoint de stats de la API
+        response = requests.get(
+            f"{DEVICE_ANALYSIS_API_URL}/api/v1/logs/stats",
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'API returned status {response.status_code}'
+            }), response.status_code
+            
+    except Exception as e:
+        logger.error(f"Error getting API logs stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
