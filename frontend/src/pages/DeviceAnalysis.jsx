@@ -86,12 +86,15 @@ export default function DeviceAnalysis() {
         limit: 100,
         requested_by_role: userRole
       })
-      setLogs(response.data.logs || [])
+      console.log('Logs response:', response.data)
+      // La API puede devolver logs en diferentes estructuras
+      const logsData = response.data.logs || response.data.entries || response.data || []
+      setLogs(Array.isArray(logsData) ? logsData : [])
     } catch (error) {
       console.error('Error fetching logs:', error)
       toast({
         title: 'Error',
-        description: 'Error al obtener logs de la API',
+        description: error.response?.data?.error || 'Error al obtener logs de la API',
         variant: 'destructive'
       })
     } finally {
@@ -875,7 +878,8 @@ export default function DeviceAnalysis() {
                       <CardTitle className="text-sm">Total Logs</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{logsStats.total_logs || 0}</p>
+                      <p className="text-2xl font-bold">{logsStats.stats?.app?.total_lines || 0}</p>
+                      <p className="text-xs text-gray-500">{logsStats.stats?.app?.size_mb?.toFixed(2) || 0} MB</p>
                     </CardContent>
                   </Card>
                   <Card>
