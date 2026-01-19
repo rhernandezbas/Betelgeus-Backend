@@ -58,7 +58,8 @@ export default function Metrics() {
         operator_name: incident.operator_name || 'Sin asignar',
         created_at: incident.created_at,
         response_time: incident.response_time_minutes,
-        exceeded_threshold: incident.exceeded_threshold || false
+        exceeded_threshold: incident.exceeded_threshold || false,
+        recreado: incident.recreado || 0  // Agregar campo recreado
       }))
       
       setTickets(transformedTickets)
@@ -656,6 +657,14 @@ export default function Metrics() {
                       )}
                     </div>
                   </th>
+                  <th className="text-left p-2 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('recreado')}>
+                    <div className="flex items-center gap-1">
+                      Recreado
+                      {sortConfig.key === 'recreado' && (
+                        <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="text-left p-2 font-medium">Vencido</th>
                   <th className="text-left p-2 font-medium">Acciones</th>
                 </tr>
@@ -666,7 +675,18 @@ export default function Metrics() {
                     <tr key={ticket.id} className="border-b hover:bg-gray-50">
                       <td className="p-2 font-mono text-xs">{ticket.ticket_id}</td>
                       <td className="p-2">{ticket.cliente}</td>
-                      <td className="p-2 max-w-xs truncate">{ticket.asunto}</td>
+                      <td className="p-2 max-w-xs truncate">
+                        <div className="flex flex-col gap-1">
+                          <span className={ticket.recreado > 0 ? "text-red-600 font-semibold" : ""}>
+                            {ticket.asunto}
+                          </span>
+                          {ticket.recreado > 0 && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              🔄 Recreado x{ticket.recreado}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-2">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           ticket.estado === 'SUCCESS' ? 'bg-green-100 text-green-800' :
@@ -691,6 +711,18 @@ export default function Metrics() {
                       </td>
                       <td className="p-2 text-xs">
                         {ticket.response_time ? `${ticket.response_time} min` : 'N/A'}
+                      </td>
+                      <td className="p-2">
+                        {ticket.recreado > 0 ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            {ticket.recreado}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            0
+                          </span>
+                        )}
                       </td>
                       <td className="p-2">
                         {ticket.exceeded_threshold ? (
