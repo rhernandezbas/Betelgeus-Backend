@@ -10,6 +10,9 @@ services:
       - FLASK_APP=app
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
+      - DEVICE_ANALYSIS_API_URL=http://host.docker.internal:7444
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - app-network
