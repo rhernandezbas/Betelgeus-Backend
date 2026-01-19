@@ -263,6 +263,18 @@ class TicketManager:
             cliente_nombre = ticket_data.get("Cliente_Nombre", "")  # Obtener nombre desde la BD
             asunto_original = ticket_data.get("Asunto", "")  # Guardar asunto original para búsquedas en BD
             fecha_creacion = ticket_data.get("Fecha_Creacion", "")
+            ticket_id_bd = ticket_data.get("Ticket_ID", "")
+            
+            # Verificar si el ticket ya existe en Splynx y está cerrado
+            should_recreate = False
+            if ticket_id_bd:
+                try:
+                    ticket_splynx = self.splynx.get_ticket_data_status(ticket_id_bd)
+                    if ticket_splynx and ticket_splynx.get('status') in ['closed', 'Closed', '4']:
+                        should_recreate = True
+                        logger.info(f"🔄 Ticket {ticket_id_bd} está cerrado en Splynx - Se recreará")
+                except Exception as e:
+                    logger.warning(f"⚠️  No se pudo verificar estado del ticket {ticket_id_bd}: {e}")
 
             assigned_person_id = self.assign_ticket_fairly()
             
@@ -275,14 +287,35 @@ class TicketManager:
             if asunto_original.startswith("Ticket-"):
                 asunto_splynx = f"GR {asunto_original}"
             
+            # Preparar nota del ticket
+            note_base = f"Ticket creado automaticamente por Api Splynx para el cliente {customer_name}, con fecha original de {fecha_creacion}"
+            
+            # Si es una recreación, agregar información al asunto y nota
+            if should_recreate:
+                from app.interface.interfaces import IncidentsInterface
+                # Obtener el incidente actual para ver cuántas veces se ha recreado
+                incidents = IncidentsInterface.get_all()
+                recreado_count = 0
+                for incident in incidents:
+                    if (incident.Cliente == cliente and
+                            incident.Asunto == asunto_original and
+                            incident.Fecha_Creacion == fecha_creacion):
+                        recreado_count = incident.recreado if hasattr(incident, 'recreado') and incident.recreado else 0
+                        break
+                
+                recreado_count += 1
+                asunto_splynx = f"{asunto_splynx} [RECREADO x{recreado_count}]"
+                note_base = f"{note_base}\n\n⚠️ TICKET RECREADO (#{recreado_count}): El ticket anterior (ID: {ticket_id_bd}) fue cerrado pero el problema persiste en GR."
+            
             ticket_data = {
                 "Cliente": cliente,
                 "Asunto": asunto_splynx,  # Usar asunto con prefijo para Splynx
                 "Asunto_Original": asunto_original,  # Guardar original para búsquedas en BD
-                "note": f"Ticket creado automaticamente por Api Splynx para el cliente {customer_name}, con fecha original de {fecha_creacion}",
+                "note": note_base,
                 "Fecha_Creacion": fecha_creacion,
                 "Prioridad": ticket_data.get("Prioridad", "medium"),
-                "assigned_to": assigned_person_id
+                "assigned_to": assigned_person_id,
+                "should_recreate": should_recreate
             }
 
             # Crear el ticket en Splynx y obtener la respuesta (que incluye el ID)
@@ -334,7 +367,7 @@ class TicketManager:
                     else:
                         logger.error(f"❌ Error enviando notificación: {notif_resultado.get('error', 'Unknown')}")
                 
-                # Actualizar assigned_to en la base de datos (usar asunto original)
+                # Actualizar assigned_to, is_created_splynx y recreado en la base de datos
                 from app.interface.interfaces import IncidentsInterface
                 try:
                     incidents = IncidentsInterface.get_all()
@@ -342,26 +375,25 @@ class TicketManager:
                         if (incident.Cliente == cliente and
                                 incident.Asunto == asunto_original and
                                 incident.Fecha_Creacion == fecha_creacion):
-                            update_data = {"assigned_to": assigned_person_id}
+                            
+                            # Preparar datos de actualización
+                            update_data = {
+                                "assigned_to": assigned_person_id,
+                                "is_created_splynx": True,
+                                "is_closed": False  # Resetear estado cerrado
+                            }
+                            
+                            # Si es una recreación, incrementar contador
+                            if ticket_data.get("should_recreate"):
+                                current_recreado = incident.recreado if hasattr(incident, 'recreado') and incident.recreado else 0
+                                update_data["recreado"] = current_recreado + 1
+                                logger.info(f"🔄 Incrementando contador recreado: {current_recreado} -> {current_recreado + 1} para ticket {ticket_id}")
+                            
                             IncidentsInterface.update(incident.id, update_data)
-                            logger.info(f"Actualizado assigned_to={assigned_person_id} para ticket {ticket_id}")
+                            logger.info(f"✅ Actualizado ticket en BD: assigned_to={assigned_person_id}, is_created_splynx=True para ticket {ticket_id}")
                             break
                 except Exception as e:
-                    logger.error(f"Error al actualizar assigned_to: {e}")
-
-                # Actualizar el estado is_created_splynx a True (usar asunto original)
-                try:
-                    incidents = IncidentsInterface.get_all()
-                    for incident in incidents:
-                        if (incident.Cliente == cliente and
-                                incident.Asunto == asunto_original and
-                                incident.Fecha_Creacion == fecha_creacion):
-                            update_data = {"is_created_splynx": True}
-                            IncidentsInterface.update(incident.id, update_data)
-                            logger.info(f"Actualizado is_created_splynx=True para ticket {ticket_id}")
-                            break
-                except Exception as e:
-                    logger.error(f"Error al actualizar is_created_splynx: {e}")
+                    logger.error(f"❌ Error al actualizar ticket en BD: {e}")
 
         # Retornar la lista de tickets creados al final de la función
         return created_tickets if created_tickets else None
