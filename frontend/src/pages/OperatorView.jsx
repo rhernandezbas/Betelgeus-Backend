@@ -311,46 +311,7 @@ export default function OperatorView() {
         </CardContent>
       </Card>
 
-      {/* Tickets Rechazados en Auditoría - Alerta */}
-      {auditRejectedTickets.length > 0 && (
-        <Card className="border-red-300 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <AlertCircle className="h-5 w-5" />
-              ❌ Tickets Rechazados en Auditoría
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-800 mb-3">
-              Tienes <strong>{auditRejectedTickets.length}</strong> ticket(s) que fueron <strong>rechazados en auditoría</strong> y requieren tu atención.
-            </p>
-            <div className="space-y-2">
-              {auditRejectedTickets.slice(0, 5).map(ticket => (
-                <div key={ticket.id} className="bg-white p-3 rounded border border-red-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-xs text-red-700">#{ticket.ticket_id}</span>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      ❌ Rechazado en Auditoría
-                    </span>
-                    <span className="text-xs text-red-600">{ticket.prioridad}</span>
-                  </div>
-                  <p className="text-sm text-gray-700 truncate">{ticket.asunto}</p>
-                  <p className="text-xs text-gray-500 mt-1">{ticket.cliente}</p>
-                  {ticket.audit_requested_at && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Rechazado el: {new Date(ticket.audit_requested_at).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              ))}
-              {auditRejectedTickets.length > 5 && (
-                <p className="text-xs text-red-600 text-center">+ {auditRejectedTickets.length - 5} más</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+      
       {/* Tickets Vencidos - Alerta */}
       {overdueTickets.length > 0 && (
         <Card className="border-red-300 bg-red-50">
