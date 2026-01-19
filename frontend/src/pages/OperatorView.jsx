@@ -11,7 +11,7 @@ export default function OperatorView() {
   const [operatorData, setOperatorData] = useState(null)
   const [myTickets, setMyTickets] = useState([])
   const [stats, setStats] = useState(null)
-  const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all', 'overdue', 'audit_rejected'
+  const [ticketFilter, setTicketFilter] = useState('open') // 'open', 'closed', 'all', 'overdue'
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [auditModalOpen, setAuditModalOpen] = useState(false)
   const [selectedTicketForAudit, setSelectedTicketForAudit] = useState(null)
@@ -67,12 +67,6 @@ export default function OperatorView() {
             assigned_to: personId,
             ticket_status: 'all'
           })
-        } else if (ticketFilter === 'audit_rejected') {
-          // Para rechazados en auditoría, obtener todos y filtrar por audit_status
-          ticketsResponse = await adminApi.getIncidents({ 
-            assigned_to: personId,
-            ticket_status: 'all'
-          })
         } else {
           ticketsResponse = await adminApi.getIncidents({ 
             assigned_to: personId,
@@ -96,8 +90,6 @@ export default function OperatorView() {
         let filteredTickets = tickets
         if (ticketFilter === 'overdue') {
           filteredTickets = tickets.filter(t => t.exceeded_threshold)
-        } else if (ticketFilter === 'audit_rejected') {
-          filteredTickets = tickets.filter(t => t.audit_status === 'rejected')
         }
         
         // Transformar al formato esperado
@@ -224,7 +216,6 @@ export default function OperatorView() {
   const closedTickets = myTickets.filter(t => t.is_closed)
 
   const overdueTickets = myTickets.filter(t => t.exceeded_threshold && !t.is_closed)
-  const auditRejectedTickets = myTickets.filter(t => t.audit_status === 'rejected')
 
   return (
     <div className="space-y-6">
@@ -487,15 +478,7 @@ export default function OperatorView() {
               >
                 Vencidos
               </Button>
-              <Button
-                onClick={() => setTicketFilter('audit_rejected')}
-                variant={ticketFilter === 'audit_rejected' ? 'default' : 'outline'}
-                size="sm"
-                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
-              >
-                ❌ Rechazados en Auditoría
-              </Button>
-            </div>
+                          </div>
           </div>
         </CardHeader>
         <CardContent>
