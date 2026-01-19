@@ -14,7 +14,8 @@ import { useToast } from '@/hooks/use-toast'
 
 const navigation = [
   { name: 'Dashboard', href: '/operator-view', icon: LayoutDashboard },
-  { name: 'Análisis de Dispositivos', href: '/operator-view/device-analysis', icon: Radio },
+  // TODO: Descomentar cuando esté listo para operadores
+  // { name: 'Análisis de Dispositivos', href: '/operator-view/device-analysis', icon: Radio },
 ]
 
 export default function OperatorLayout() {
