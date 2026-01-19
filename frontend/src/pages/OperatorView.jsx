@@ -544,17 +544,17 @@ export default function OperatorView() {
                       <td className="p-2">
                         <div className="flex flex-col gap-1">
                           {/* Mostrar estado de auditoría si existe */}
-                          {ticket.audit_requested && ticket.audit_status === 'approved' && (
+                          {ticket.audit_status === 'approved' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               ✅ Revisado
                             </span>
                           )}
-                          {ticket.audit_requested && ticket.audit_status === 'rejected' && (
+                          {ticket.audit_status === 'rejected' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 font-bold">
                               ❌ Rechazado en Auditoría
                             </span>
                           )}
-                          {ticket.audit_requested && ticket.audit_status === 'pending' && (
+                          {ticket.audit_status === 'pending' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                               ⏳ En revisión
                             </span>
