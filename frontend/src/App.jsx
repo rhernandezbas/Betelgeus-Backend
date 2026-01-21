@@ -15,6 +15,7 @@ import OperatorView from './pages/OperatorView'
 import DeviceAnalysis from './pages/DeviceAnalysis'
 import Login from './pages/Login'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
+import { PermissionRoute } from './components/PermissionRoute'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -44,7 +45,11 @@ function App() {
           <Route path="audit" element={<AuditLogs />} />
           <Route path="audit-tickets" element={<AuditTickets />} />
           <Route path="reassignment-history" element={<ReassignmentHistory />} />
-          <Route path="device-analysis" element={<DeviceAnalysis />} />
+          <Route path="device-analysis" element={
+            <PermissionRoute requiredPermission="can_access_device_analysis">
+              <DeviceAnalysis />
+            </PermissionRoute>
+          } />
         </Route>
 
         {/* Rutas protegidas para operadores */}
@@ -53,8 +58,16 @@ function App() {
             <OperatorLayout />
           </ProtectedRoute>
         }>
-          <Route index element={<OperatorView />} />
-          <Route path="device-analysis" element={<DeviceAnalysis />} />
+          <Route index element={
+            <PermissionRoute requiredPermission="can_access_operator_view">
+              <OperatorView />
+            </PermissionRoute>
+          } />
+          <Route path="device-analysis" element={
+            <PermissionRoute requiredPermission="can_access_device_analysis">
+              <DeviceAnalysis />
+            </PermissionRoute>
+          } />
         </Route>
       </Routes>
       <Toaster />

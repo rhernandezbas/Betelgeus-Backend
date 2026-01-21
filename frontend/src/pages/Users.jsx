@@ -174,6 +174,18 @@ export default function Users() {
         description: `Permiso ${permission} ${value ? 'habilitado' : 'deshabilitado'}`
       })
       
+      // Si el usuario modificado es el usuario actual, actualizar sessionStorage
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+      if (currentUser.id === userId) {
+        currentUser[permission] = value
+        sessionStorage.setItem('user', JSON.stringify(currentUser))
+        
+        // Forzar recarga de la página para aplicar los cambios de permisos
+        if (permission === 'can_access_device_analysis' || permission === 'can_access_operator_view') {
+          window.location.reload()
+        }
+      }
+      
       fetchUsers()
     } catch (error) {
       toast({
