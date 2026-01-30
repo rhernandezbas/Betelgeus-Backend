@@ -71,6 +71,15 @@ jobs:
             echo "🛑 Deteniendo contenedores..."
             docker compose down -v 2>&1 || true
 
+            # Liberar puerto 7842 si está ocupado
+            echo "🔓 Liberando puerto 7842..."
+            PORT_PID=$(lsof -ti:7842 2>/dev/null || true)
+            if [ ! -z "$PORT_PID" ]; then
+              echo "⚠️  Puerto 7842 ocupado por proceso $PORT_PID, matando..."
+              kill -9 $PORT_PID 2>/dev/null || true
+              sleep 2
+            fi
+
             # Limpiar caché de Docker completamente
             echo "🧹 Limpiando caché de Docker..."
             docker system prune -af 2>&1
