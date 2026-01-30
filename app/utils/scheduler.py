@@ -58,21 +58,9 @@ def run_all_flow_job(app):
             response_data = response.json()
             logger.info("✅ Endpoint all_flow ejecutado exitosamente")
             logger.info(f"📄 Respuesta: {response_data}")
-
-            # Solo continuar con asignación si all_flow fue exitoso
-            logger.info("📡 Llamando al endpoint /api/tickets/assign_unassigned...")
-            response_assign = requests.post('http://localhost:7842/api/tickets/assign_unassigned', timeout=300)
-
-            if response_assign.status_code == 200:
-                logger.info("✅ Endpoint assign_unassigned ejecutado exitosamente")
-                logger.info(f"📄 Respuesta: {response_assign.json()}")
-            else:
-                logger.warning(f"⚠️ Endpoint assign_unassigned respondió con código: {response_assign.status_code}")
-                logger.warning(f"📄 Respuesta: {response_assign.text}")
         else:
             logger.error(f"❌ Endpoint all_flow FALLÓ con código: {response.status_code}")
             logger.error(f"📄 Respuesta: {response.text}")
-            logger.warning("⚠️ Saltando assign_unassigned debido a error en all_flow")
         
         logger.info("="*60)
         logger.info(f"✅ CRON JOB COMPLETADO - {datetime.now(tz_argentina).strftime('%Y-%m-%d %H:%M:%S')}")
@@ -136,6 +124,15 @@ def init_scheduler(app):
         replace_existing=True
     )
     
+    # Agregar job para asignar tickets sin asignar (cada 3 minutos) - INDEPENDIENTE de all_flow
+    scheduler.add_job(
+        func=lambda: requests.post('http://localhost:7842/api/tickets/assign_unassigned'),
+        trigger=IntervalTrigger(minutes=3),
+        id='assign_unassigned_job',
+        name='Asignar tickets sin asignar cada 3 minutos',
+        replace_existing=True
+    )
+
     # Agregar job para alertar tickets vencidos (cada 3 minutos)
     scheduler.add_job(
         func=lambda: requests.post('http://localhost:7842/api/tickets/alert_overdue'),
@@ -189,6 +186,7 @@ def init_scheduler(app):
     logger.info("⏰ SCHEDULER INICIADO")
     logger.info("📋 Tareas programadas:")
     logger.info("   • all_flow cada 3 minutos")
+    logger.info("   • Asignación tickets sin asignar cada 3 minutos (independiente)")
     logger.info("   • Alertas tickets vencidos cada 3 minutos")
     logger.info("   • Notificaciones de fin de turno cada hora")
     logger.info("   • Desasignación automática cada 40 minutos")
