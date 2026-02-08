@@ -2,6 +2,7 @@
 Singleton version of SplynxServices to avoid multiple logins
 """
 
+import os
 import requests
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
@@ -21,7 +22,7 @@ class SplynxServicesSingleton:
     _instance = None
     _lock = Lock()
 
-    def __new__(cls, verify_ssl=False):
+    def __new__(cls, verify_ssl=None):
         """Thread-safe singleton pattern"""
         if cls._instance is None:
             with cls._lock:
@@ -31,21 +32,28 @@ class SplynxServicesSingleton:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, verify_ssl=False):
+    def __init__(self, verify_ssl=None):
         """Initialize only once"""
         if self._initialized:
             return
 
-        self.base_url = "https://splynx.ipnext.com.ar"
-        self.user = "Ronald"
-        self.password = "Ronald2025!"
-        self.verify_ssl = verify_ssl
+        self.base_url = os.getenv('SPLYNX_BASE_URL', 'https://splynx.ipnext.com.ar')
+        self.user = os.getenv('SPLYNX_USER')
+        self.password = os.getenv('SPLYNX_PASSWORD')
+
+        # SSL verification: use env var, fallback to parameter, then default to True
+        if verify_ssl is None:
+            self.verify_ssl = os.getenv('SPLYNX_SSL_VERIFY', 'True').lower() == 'true'
+        else:
+            self.verify_ssl = verify_ssl
+
         self.token = None
         self._token_lock = Lock()
 
         # Disable SSL warnings if SSL verification is disabled
         if not self.verify_ssl:
             urllib3.disable_warnings(InsecureRequestWarning)
+            logger.warning("⚠️ SSL verification is disabled. This is insecure for production!")
 
         # Get initial token
         self.token = self.login_token()

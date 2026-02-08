@@ -68,7 +68,16 @@ App Splynx is an automated ticket management system that integrates with Splynx 
 - Schedules: `operator_schedule` table (work hours, assignment times, alert times)
 - System settings: `system_config` table (thresholds, intervals, toggles)
 
-Use the admin panel or `ConfigHelper` methods to read/modify configuration. Only hardcoded values in `constants.py` are credentials and static IDs.
+Use the admin panel or `ConfigHelper` methods to read/modify configuration.
+
+**SECURITY - Environment Variables**: Sensitive credentials are stored in environment variables (`.env` file):
+- Database credentials: `DB_HOST`, `DB_USER`, `DB_PASSWORD`
+- Splynx API: `SPLYNX_USER`, `SPLYNX_PASSWORD`, `SPLYNX_SSL_VERIFY`
+- Gestión Real: `GESTION_REAL_USERNAME`, `GESTION_REAL_PASSWORD`
+- Evolution API: `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE_NAME`
+- Flask: `SECRET_KEY`, `SESSION_COOKIE_SECURE`
+
+To configure, copy `.env.template` to `.env` and set appropriate values. The `.env` file is gitignored and should never be committed.
 
 ## Development Commands
 
@@ -76,6 +85,13 @@ Use the admin panel or `ConfigHelper` methods to read/modify configuration. Only
 ```bash
 # Install dependencies
 poetry install
+
+# Create .env file from template
+cp .env.template .env
+# Edit .env and set your credentials
+
+# Validate environment variables
+poetry run python validate_env.py
 
 # Run migrations (first time or after model changes)
 poetry run python -m flask db upgrade
@@ -236,17 +252,26 @@ Long-running operations use background threads:
 
 ## Security Notes
 
-### Credentials Location
-- **Splynx API**: `app/services/splynx_services.py`
-- **Gestión Real**: `app/utils/constants.py`
-- **Evolution API**: `app/utils/constants.py`
-- **Database**: `app/utils/constants.py` (with env var fallbacks)
+### Credentials Management
+**ALL credentials are now stored in environment variables (`.env` file)**:
+- **Splynx API**: `SPLYNX_USER`, `SPLYNX_PASSWORD`, `SPLYNX_BASE_URL`, `SPLYNX_SSL_VERIFY`
+- **Gestión Real**: `GESTION_REAL_USERNAME`, `GESTION_REAL_PASSWORD`
+- **Evolution API**: `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE_NAME`, `EVOLUTION_API_BASE_URL`
+- **Database**: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- **Flask**: `SECRET_KEY`, `SESSION_COOKIE_SECURE`
+
+**IMPORTANT**:
+- Never commit the `.env` file (already in `.gitignore`)
+- Use `.env.template` as documentation for required variables
+- Run `poetry run python validate_env.py` to verify configuration
+- Set proper file permissions: `chmod 600 .env`
 
 ### Authentication
 - Session-based authentication with role-based access control (RBAC)
 - Roles: `admin` (full access) and `operator` (limited access)
 - Operators linked to `person_id` for ticket assignment
 - Page-level permissions: `can_access_operator_view`, `can_access_device_analysis`
+- Session security configured via `SESSION_COOKIE_SECURE` (enable in production with HTTPS)
 
 ## Selenium Configuration
 

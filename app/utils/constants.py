@@ -9,10 +9,10 @@ import os
 # CONFIGURACIÓN DE SELENIUM / GESTION REAL
 # ============================================================================
 
-USUARIO = "RoxZ3008"
-CONTRASENA = "RoxZG3008$"
-LOGIN_URL = "https://gestionreal.com.ar/login/main_login.php"
-CASOS_URL = "https://gestionreal.com.ar/index.php?menuitem=10"
+USUARIO = os.getenv('GESTION_REAL_USERNAME')
+CONTRASENA = os.getenv('GESTION_REAL_PASSWORD')
+LOGIN_URL = os.getenv('GESTION_REAL_LOGIN_URL', 'https://gestionreal.com.ar/login/main_login.php')
+CASOS_URL = os.getenv('GESTION_REAL_CASOS_URL', 'https://gestionreal.com.ar/index.php?menuitem=10')
 
 DEPARTAMENTOS_SELENIUM = {
     "Soporte_Tecnico": {
@@ -36,9 +36,9 @@ DEPARTAMENTOS = {
 # 1. La URL es correcta
 # 2. El servidor tiene acceso a internet
 # 3. El dominio está correctamente configurado
-EVOLUTION_API_BASE_URL = "https://ipnext-evolution-api.s2vvnr.easypanel.host"
-EVOLUTION_API_KEY = "636A734D58DC-4FD7-B49E-A7DD92EA402E"
-EVOLUTION_INSTANCE_NAME = "test21"
+EVOLUTION_API_BASE_URL = os.getenv('EVOLUTION_API_BASE_URL')
+EVOLUTION_API_KEY = os.getenv('EVOLUTION_API_KEY')
+EVOLUTION_INSTANCE_NAME = os.getenv('EVOLUTION_INSTANCE_NAME')
 
 # ============================================================================
 # CONFIGURACIÓN DE OPERADORES
