@@ -83,20 +83,41 @@ def sync_tickets_status():
                     # Calcular tiempo desde última actualización (no desde creación)
                     # Si el ticket fue respondido/actualizado, el contador se resetea
                     last_update = None
-                    if updated_at:
-                        try:
-                            last_update = datetime.strptime(updated_at, '%Y-%m-%d %H:%M:%S')
-                            # Guardar last_update en BD
+
+                    # LÓGICA DIFERENCIADA: Tickets de Gestión Real vs Tickets normales de Splynx
+                    if ticket.is_from_gestion_real:
+                        # Para tickets de GR: Usar ultimo_contacto_gr si existe
+                        if ticket.ultimo_contacto_gr:
+                            last_update = ticket.ultimo_contacto_gr
+                            # Actualizar last_update con ultimo_contacto_gr
                             ticket.last_update = last_update
-                        except ValueError:
-                            last_update = None
-                    
-                    # Si no hay updated_at, usar fecha de creación como fallback
+                            logger.debug(f"*** Ticket {ticket_id} (GR): Usando ultimo_contacto_gr: {last_update}")
+                        # Fallback: Si no hay ultimo_contacto_gr, usar updated_at de Splynx
+                        elif updated_at:
+                            try:
+                                last_update = datetime.strptime(updated_at, '%Y-%m-%d %H:%M:%S')
+                                ticket.last_update = last_update
+                                logger.debug(f"*** Ticket {ticket_id} (GR): Fallback a Splynx updated_at: {last_update}")
+                            except ValueError:
+                                last_update = None
+                    else:
+                        # Para tickets normales de Splynx: Usar updated_at
+                        if updated_at:
+                            try:
+                                last_update = datetime.strptime(updated_at, '%Y-%m-%d %H:%M:%S')
+                                # Guardar last_update en BD
+                                ticket.last_update = last_update
+                                logger.debug(f"*** Ticket {ticket_id} (Splynx): Usando updated_at: {last_update}")
+                            except ValueError:
+                                last_update = None
+
+                    # Si no hay last_update aún, usar fecha de creación como fallback
                     if not last_update:
                         last_update = parse_date(ticket.Fecha_Creacion)
                         # Si usamos Fecha_Creacion, también guardarlo en last_update si no existe
                         if last_update and not ticket.last_update:
                             ticket.last_update = last_update
+                            logger.debug(f"*** Ticket {ticket_id}: Fallback a Fecha_Creacion: {last_update}")
                     
                     if last_update:
                         # Usar hora de Argentina para el cálculo

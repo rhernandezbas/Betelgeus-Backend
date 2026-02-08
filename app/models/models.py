@@ -21,8 +21,10 @@ class IncidentsDetection(db.Model):
     assigned_to = db.Column(db.Integer)
     closed_at = db.Column(db.DateTime)  # Fecha de cierre del ticket
     is_closed = db.Column(db.Boolean, default=False)  # Indica si el ticket está cerrado
-    last_update = db.Column(db.DateTime)  # Última actualización desde Splynx (updated_at)
+    last_update = db.Column(db.DateTime)  # Última actualización (Splynx updated_at o GR Ultimo Contacto)
     recreado = db.Column(db.Integer, default=0)  # Contador de veces que se ha recreado el ticket
+    is_from_gestion_real = db.Column(db.Boolean, default=False)  # Identifica tickets que vienen de GR
+    ultimo_contacto_gr = db.Column(db.DateTime)  # Última fecha de contacto desde Gestión Real (solo para tickets GR)
     
     # Campos de métricas (unificados desde ticket_response_metrics)
     exceeded_threshold = db.Column(db.Boolean, default=False)  # Si supera el threshold (>60 min)

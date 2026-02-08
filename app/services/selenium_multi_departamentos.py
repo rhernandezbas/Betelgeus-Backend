@@ -406,6 +406,7 @@ class SeleniumMultiDepartamentos:
                         fecha_creacion = fila.get("Fecha Creacion", "").strip()
                         prioridad_raw = fila.get("Prioridad", "").strip().lower()
                         contrato = fila.get("Contrato", "").strip()
+                        ultimo_contacto = fila.get("Ultimo Contacto", "").strip()  # Última fecha de contacto en GR
 
                         logger.debug(f"***   Cliente: '{cliente}', Nombre: '{cliente_nombre}', Asunto: '{asunto_original}', Fecha: '{fecha_creacion}'")
                         logger.debug(f"***   Prioridad: '{prioridad_raw}', Contrato: '{contrato}'")
@@ -429,6 +430,24 @@ class SeleniumMultiDepartamentos:
 
                         # Solo procesar si hay cliente
                         if cliente:
+                            # Parsear fecha de Ultimo Contacto de GR (formato: DD-MM-YYYY HH:MM:SS)
+                            ultimo_contacto_dt = None
+                            if ultimo_contacto:
+                                try:
+                                    from datetime import datetime
+                                    # Parsear fecha en formato DD-MM-YYYY HH:MM:SS
+                                    parts = ultimo_contacto.split(' ')
+                                    date_parts = parts[0].split('-')
+                                    time_part = parts[1] if len(parts) > 1 else '00:00:00'
+                                    year = date_parts[2]
+                                    month = date_parts[1]
+                                    day = date_parts[0]
+                                    ultimo_contacto_dt = datetime.strptime(f'{year}-{month}-{day} {time_part}', '%Y-%m-%d %H:%M:%S')
+                                    logger.debug(f"***   Ultimo Contacto parseado: {ultimo_contacto_dt}")
+                                except Exception as e:
+                                    logger.warning(f"*** Error parseando Ultimo Contacto '{ultimo_contacto}': {e}")
+                                    ultimo_contacto_dt = None
+
                             # Crear objeto para la base de datos
                             incident_data = {
                                 "Cliente": cliente,
@@ -438,7 +457,10 @@ class SeleniumMultiDepartamentos:
                                 "Ticket_ID": "",  # Se llenará cuando se cree el ticket
                                 "Estado": "PENDING",  # Estado inicial
                                 "Prioridad": prioridad,
-                                "is_created_splynx": False  # Inicialmente no creado
+                                "is_created_splynx": False,  # Inicialmente no creado
+                                "is_from_gestion_real": True,  # Marca que viene de Gestión Real
+                                "ultimo_contacto_gr": ultimo_contacto_dt,  # Fecha de último contacto en GR
+                                "last_update": ultimo_contacto_dt  # Inicializar con Ultimo Contacto de GR
                             }
 
                             try:
