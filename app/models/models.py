@@ -315,3 +315,87 @@ class DeviceAnalysis(db.Model):
     
     def __repr__(self):
         return f'<DeviceAnalysis id: {self.id}, device_ip: {self.device_ip}, type: {self.analysis_type}, success: {self.success}>'
+
+
+class HookNuevoTicket(db.Model):
+    """Almacena cada payload entrante de nuevo ticket desde sistema externo."""
+    __tablename__ = 'hook_nuevo_ticket'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre_empresa = db.Column(db.String(200))
+    numero_ticket = db.Column(db.Integer)
+    fecha_creado = db.Column(db.String(50))
+    departamento = db.Column(db.String(200))
+    canal_entrada = db.Column(db.String(100))
+    motivo_contacto = db.Column(db.String(200))
+    numero_cliente = db.Column(db.String(100))
+    numero_whatsapp = db.Column(db.String(50))
+    nombre_usuario = db.Column(db.String(200))
+    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre_empresa': self.nombre_empresa,
+            'numero_ticket': self.numero_ticket,
+            'fecha_creado': self.fecha_creado,
+            'departamento': self.departamento,
+            'canal_entrada': self.canal_entrada,
+            'motivo_contacto': self.motivo_contacto,
+            'numero_cliente': self.numero_cliente,
+            'numero_whatsapp': self.numero_whatsapp,
+            'nombre_usuario': self.nombre_usuario,
+            'received_at': self.received_at.isoformat() if self.received_at else None,
+        }
+
+    def __repr__(self):
+        return f'<HookNuevoTicket id: {self.id}, numero_ticket: {self.numero_ticket}>'
+
+
+class HookCierreTicket(db.Model):
+    """Almacena cada payload entrante de cierre de ticket desde sistema externo."""
+    __tablename__ = 'hook_cierre_ticket'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre_empresa = db.Column(db.String(200))
+    numero_ticket = db.Column(db.Integer)
+    fecha_creado = db.Column(db.String(50))
+    fecha_cerrado = db.Column(db.String(50))
+    asignado = db.Column(db.String(200))
+    descripcion_cierre = db.Column(db.Text)
+    motivo = db.Column(db.String(200))
+    tiempo_vida_ticket = db.Column(db.String(100))
+    tiempo_trabajo_real = db.Column(db.String(100))
+    tiempo_reaccion = db.Column(db.String(100))
+    departamento = db.Column(db.String(200))
+    canal_entrada = db.Column(db.String(100))
+    motivo_contacto = db.Column(db.String(200))
+    numero_cliente = db.Column(db.String(100))
+    numero_whatsapp = db.Column(db.String(50))
+    nombre_usuario = db.Column(db.String(200))
+    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre_empresa': self.nombre_empresa,
+            'numero_ticket': self.numero_ticket,
+            'fecha_creado': self.fecha_creado,
+            'fecha_cerrado': self.fecha_cerrado,
+            'asignado': self.asignado,
+            'descripcion_cierre': self.descripcion_cierre,
+            'motivo': self.motivo,
+            'tiempo_vida_ticket': self.tiempo_vida_ticket,
+            'tiempo_trabajo_real': self.tiempo_trabajo_real,
+            'tiempo_reaccion': self.tiempo_reaccion,
+            'departamento': self.departamento,
+            'canal_entrada': self.canal_entrada,
+            'motivo_contacto': self.motivo_contacto,
+            'numero_cliente': self.numero_cliente,
+            'numero_whatsapp': self.numero_whatsapp,
+            'nombre_usuario': self.nombre_usuario,
+            'received_at': self.received_at.isoformat() if self.received_at else None,
+        }
+
+    def __repr__(self):
+        return f'<HookCierreTicket id: {self.id}, numero_ticket: {self.numero_ticket}>'
