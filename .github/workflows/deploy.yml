@@ -8,148 +8,69 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    environment: test
-    
+    runs-on: self-hosted
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup VPS and Deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 190.7.234.37
-          username: root
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: 2222
-          command_timeout: 30m
-          script: |
-            echo "🔧 Verificando dependencias..."
-            
-            # Verificar Docker
-            if ! command -v docker &> /dev/null; then
-              echo "📦 Instalando Docker..."
-              curl -fsSL https://get.docker.com -o get-docker.sh
-              sh get-docker.sh
-              rm get-docker.sh
-            else
-              echo "✅ Docker ya está instalado"
-            fi
-            
-            # Instalar Git si no existe
-            if ! command -v git &> /dev/null; then
-              echo "📦 Instalando Git..."
-              apt update && apt install -y git
-            else
-              echo "✅ Git ya está instalado"
-            fi
-            
-            # Verificar versiones
-            echo "📋 Versiones instaladas:"
-            docker --version
-            docker compose version
-            git --version
-            
-            # Configurar directorio del proyecto
-            PROJECT_DIR="/opt/splynx-tickets"
-            
-            # Crear directorio si no existe
-            mkdir -p $PROJECT_DIR
-            cd $PROJECT_DIR
-            
-            # Si el repo no existe, clonarlo
-            if [ ! -d ".git" ]; then
-              echo "📦 Clonando repositorio..."
-              git clone https://github.com/rhernandezbas/splynx-tickets.git .
-            else
-              echo "🔄 Actualizando repositorio..."
-              git fetch origin
-              git reset --hard origin/main
-              git pull origin main
-            fi
-            
-            # Detener contenedores existentes
-            echo "🛑 Deteniendo contenedores..."
-            docker compose down -v 2>&1 || true
+      - name: Deploy
+        run: |
+          PROJECT_DIR="/opt/splynx-tickets"
+          mkdir -p $PROJECT_DIR
+          cd $PROJECT_DIR
 
-            # Forzar eliminación de contenedores con el nombre splynx-backend (todos)
-            echo "🗑️  Eliminando TODOS los contenedores splynx-backend..."
-            docker ps -a | grep splynx-backend | awk '{print $1}' | xargs -r docker rm -f 2>&1 || true
+          # Actualizar código
+          if [ ! -d ".git" ]; then
+            echo "📦 Clonando repositorio..."
+            git clone https://github.com/rhernandezbas/splynx-tickets.git .
+          else
+            echo "🔄 Actualizando repositorio..."
+            git fetch origin
+            git reset --hard origin/main
+          fi
 
-            # Limpiar volúmenes huérfanos
-            echo "🧹 Limpiando volúmenes huérfanos..."
-            docker volume prune -f 2>&1 || true
+          # Detener contenedores existentes
+          echo "🛑 Deteniendo contenedores..."
+          docker compose down -v 2>&1 || true
 
-            # Limpiar caché de Docker completamente
-            echo "🧹 Limpiando caché de Docker..."
-            docker system prune -af 2>&1
+          # Limpiar contenedores huérfanos
+          docker ps -a | grep splynx-backend | awk '{print $1}' | xargs -r docker rm -f 2>&1 || true
+          docker volume prune -f 2>&1 || true
+          docker system prune -af 2>&1
 
-            # Construir y levantar con los nuevos cambios
-            echo "🏗️  Construyendo nueva imagen..."
-            docker compose build --no-cache --pull 2>&1
+          # Build y deploy
+          echo "🏗️  Construyendo nueva imagen..."
+          docker compose build --no-cache --pull 2>&1
 
-            BUILD_EXIT_CODE=$?
-            if [ $BUILD_EXIT_CODE -ne 0 ]; then
-              echo "❌ Error en el build, código de salida: $BUILD_EXIT_CODE"
-              exit 1
-            fi
+          if [ $? -ne 0 ]; then
+            echo "❌ Error en el build"
+            exit 1
+          fi
 
-            echo "🚀 Iniciando contenedores..."
-            docker compose up -d 2>&1
+          echo "🚀 Iniciando contenedores..."
+          docker compose up -d 2>&1
 
-            UP_EXIT_CODE=$?
-            if [ $UP_EXIT_CODE -ne 0 ]; then
-              echo "❌ Error al iniciar contenedores, código de salida: $UP_EXIT_CODE"
-              docker compose logs --tail=100 backend
-              exit 1
-            fi
+          if [ $? -ne 0 ]; then
+            echo "❌ Error al iniciar contenedores"
+            docker compose logs --tail=100 backend
+            exit 1
+          fi
 
-            # Esperar a que el contenedor esté listo
-            echo "⏳ Esperando que el servicio esté listo..."
-            sleep 20
+          # Verificar
+          echo "⏳ Esperando que el servicio esté listo..."
+          sleep 20
 
-            # Mostrar estado
-            echo "📊 Estado de contenedores:"
-            docker compose ps -a
+          echo "📊 Estado de contenedores:"
+          docker compose ps -a
 
-            # Mostrar logs recientes
-            echo "📋 Últimos logs del backend:"
-            docker compose logs --tail=50 backend
+          echo "📋 Últimos logs del backend:"
+          docker compose logs --tail=50 backend
 
-            # Verificar si el contenedor está corriendo
-            if ! docker compose ps | grep -q "Up"; then
-              echo "❌ Contenedor no está corriendo después del inicio"
-              echo "📋 Logs completos:"
-              docker compose logs backend
-              exit 1
-            fi
+          if ! docker compose ps | grep -q "Up"; then
+            echo "❌ Contenedor no está corriendo"
+            docker compose logs backend
+            exit 1
+          fi
 
-            echo "✅ Despliegue completado exitosamente"
-
-      - name: Verify deployment
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 190.7.234.37
-          username: root
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: 2222
-          script: |
-            cd /opt/splynx-tickets
-            
-            # Verificar que los contenedores están corriendo
-            if docker compose ps | grep -q "Up"; then
-              echo "✅ Contenedores corriendo correctamente"
-              echo ""
-              echo "📊 Estado de servicios:"
-              docker compose ps
-              echo ""
-              echo "🌐 API Backend disponible en: http://190.7.234.37:5605"
-              echo ""
-              echo "📋 Logs del backend:"
-              docker compose logs --tail=20 backend
-              exit 0
-            else
-              echo "❌ Error: Contenedores no están corriendo"
-              docker compose logs --tail=50
-              exit 1
-            fi
+          echo "✅ Despliegue completado exitosamente"
