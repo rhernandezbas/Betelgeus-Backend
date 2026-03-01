@@ -140,7 +140,7 @@ class UserInterface:
                 return None
             
             # Actualizar último login
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now()
             db.session.commit()
             
             logger.info(f"Login exitoso: {username}")

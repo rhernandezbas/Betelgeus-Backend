@@ -59,7 +59,8 @@ EXPOSE 7842
 # Variables de entorno por defecto (pueden ser sobrescritas)
 ENV FLASK_APP=app \
     FLASK_ENV=production \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TZ=America/Argentina/Buenos_Aires
 
 # Healthcheck para verificar que la aplicación está corriendo
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

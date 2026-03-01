@@ -253,7 +253,7 @@ def submit_feedback(analysis_id):
         # Actualizar feedback
         analysis.feedback_rating = rating
         analysis.feedback_comment = comment
-        analysis.feedback_at = datetime.utcnow()
+        analysis.feedback_at = datetime.now()
         
         db.session.commit()
         

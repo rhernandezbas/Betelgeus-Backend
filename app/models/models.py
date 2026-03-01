@@ -149,7 +149,7 @@ class AuditLog(db.Model):
     old_value = db.Column(JSON)
     new_value = db.Column(JSON)
     performed_by = db.Column(db.String(100))
-    performed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    performed_at = db.Column(db.DateTime, default=datetime.now)
     ip_address = db.Column(db.String(50))
     notes = db.Column(db.Text)
 
@@ -164,8 +164,8 @@ class MessageTemplate(db.Model):
     description = db.Column(db.Text)
     variables = db.Column(JSON)  # Lista de variables disponibles
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     updated_by = db.Column(db.String(100))
 
     def to_dict(self):
@@ -199,7 +199,7 @@ class TicketReassignmentHistory(db.Model):
     to_operator_name = db.Column(db.String(200))
     reason = db.Column(db.String(500))  # Razón de la reasignación
     reassignment_type = db.Column(db.String(50))  # 'auto_unassign', 'manual', 'end_of_shift', etc.
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     created_by = db.Column(db.String(100))  # 'system', 'admin', username
     
     def __repr__(self):
@@ -219,7 +219,7 @@ class User(db.Model):
     person_id = db.Column(db.Integer)  # ID del operador asociado (si es operator)
     is_active = db.Column(db.Boolean, default=True)
     last_login = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     created_by = db.Column(db.String(100))
     
     # Permisos de acceso a páginas
@@ -281,7 +281,7 @@ class DeviceAnalysis(db.Model):
     # Auditoría
     requested_by = db.Column(db.String(100))  # Usuario que hizo la consulta
     requested_by_role = db.Column(db.String(50))  # 'admin' o 'operator'
-    requested_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    requested_at = db.Column(db.DateTime, default=datetime.now, index=True)
     ip_address = db.Column(db.String(50))  # IP desde donde se hizo la consulta
     
     def to_dict(self):
