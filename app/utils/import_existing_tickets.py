@@ -7,20 +7,11 @@ OPTIMIZADO: Usa SplynxServicesSingleton para evitar múltiples logins
 from app.utils.config import db
 from app.models.models import IncidentsDetection
 from app.services.splynx_services_singleton import SplynxServicesSingleton
+from app.utils.date_utils import parse_splynx_date
+from app.utils.logger import get_logger
 from datetime import datetime
-import logging
 
-logger = logging.getLogger(__name__)
-
-def parse_splynx_date(date_str):
-    """Parse fecha de Splynx (YYYY-MM-DD HH:MM:SS) a formato DD-MM-YYYY HH:MM:SS"""
-    if not date_str:
-        return None
-    try:
-        dt = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-        return dt.strftime('%d-%m-%Y %H:%M:%S')
-    except:
-        return None
+logger = get_logger(__name__)
 
 def import_existing_tickets_from_splynx():
     """
@@ -81,9 +72,8 @@ def import_existing_tickets_from_splynx():
                         logger.warning(f"⚠️ Ticket {ticket_id} tiene assigned_to inválido: {assigned_to_raw}")
 
                 # Convertir fecha
-                fecha_creacion = parse_splynx_date(created_at)
-                if not fecha_creacion:
-                    fecha_creacion = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+                dt = parse_splynx_date(created_at)
+                fecha_creacion = dt.strftime('%d-%m-%Y %H:%M:%S') if dt else datetime.now().strftime('%d-%m-%Y %H:%M:%S')
 
                 # Mapear prioridad
                 priority_map = {'1': 'Baja', '2': 'Media', '3': 'Alta', '4': 'Crítica'}

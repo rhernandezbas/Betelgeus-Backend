@@ -143,7 +143,7 @@ class TicketManager:
         Returns:
             dict: Diccionario con los tickets pendientes de crear en Splynx y estadísticas
         """
-        from app.interface.interfaces import IncidentsInterface
+        from app.models.models import IncidentsDetection
 
         resultado = {
             "total": 0,
@@ -151,26 +151,24 @@ class TicketManager:
         }
 
         try:
-            # Obtener todos los incidentes de la base de datos
-            incidents = IncidentsInterface.get_all()
+            # Consultar directamente los incidentes pendientes de crear en Splynx
+            pending = IncidentsDetection.query.filter_by(is_created_splynx=False).all()
 
-            # Filtrar solo los que tienen is_created_splynx en falso o 0
+            # Convertir los objetos a diccionarios
             pending_tickets = []
-            for inc in incidents:
-                if not inc.is_created_splynx:
-                    # Convertir el objeto a diccionario
-                    inc_dict = {
-                        "id": inc.id,
-                        "Cliente": inc.Cliente,
-                        "Cliente_Nombre": inc.Cliente_Nombre if hasattr(inc, "Cliente_Nombre") else "",
-                        "Asunto": inc.Asunto,
-                        "Fecha_Creacion": inc.Fecha_Creacion,
-                        "Estado": inc.Estado if hasattr(inc, "Estado") else "",
-                        "Prioridad": inc.Prioridad if hasattr(inc, "Prioridad") else "medium",
-                        "Ticket_ID": inc.Ticket_ID if hasattr(inc, "Ticket_ID") else "",
-                        "is_created_splynx": inc.is_created_splynx
-                    }
-                    pending_tickets.append(inc_dict)
+            for inc in pending:
+                inc_dict = {
+                    "id": inc.id,
+                    "Cliente": inc.Cliente,
+                    "Cliente_Nombre": inc.Cliente_Nombre if hasattr(inc, "Cliente_Nombre") else "",
+                    "Asunto": inc.Asunto,
+                    "Fecha_Creacion": inc.Fecha_Creacion,
+                    "Estado": inc.Estado if hasattr(inc, "Estado") else "",
+                    "Prioridad": inc.Prioridad if hasattr(inc, "Prioridad") else "medium",
+                    "Ticket_ID": inc.Ticket_ID if hasattr(inc, "Ticket_ID") else "",
+                    "is_created_splynx": inc.is_created_splynx
+                }
+                pending_tickets.append(inc_dict)
 
             # Guardar en el resultado
             resultado["total"] = len(pending_tickets)
@@ -197,19 +195,12 @@ class TicketManager:
             bool: True si se actualizó correctamente, False en caso contrario
         """
         from app.interface.interfaces import IncidentsInterface
-        
+        from app.models.models import IncidentsDetection
+
         try:
-            # Buscar el incidente por cliente, asunto y fecha
-            incidents = IncidentsInterface.get_all()
-            target_incident = None
-            
-            for incident in incidents:
-                if (incident.Cliente == customer_id and 
-                    incident.Asunto == subject and 
-                    incident.Fecha_Creacion == fecha_creacion):
-                    target_incident = incident
-                    break
-            
+            # Buscar el incidente directamente por fecha_creacion (tiene constraint unique)
+            target_incident = IncidentsDetection.query.filter_by(Fecha_Creacion=fecha_creacion).first()
+
             if target_incident:
                 # Actualizar el incidente
                 update_data = {
@@ -298,16 +289,14 @@ class TicketManager:
             
             # Si es una recreación, agregar información al asunto y nota
             if should_recreate:
-                from app.interface.interfaces import IncidentsInterface
+                from app.models.models import IncidentsDetection
                 # Obtener el incidente actual para ver cuántas veces se ha recreado
-                incidents = IncidentsInterface.get_all()
-                recreado_count = 0
-                for incident in incidents:
-                    if (incident.Cliente == cliente and
-                            incident.Asunto == asunto_original and
-                            incident.Fecha_Creacion == fecha_creacion):
-                        recreado_count = incident.recreado if hasattr(incident, 'recreado') and incident.recreado else 0
-                        break
+                incident = IncidentsDetection.query.filter_by(
+                    Cliente=cliente,
+                    Asunto=asunto_original,
+                    Fecha_Creacion=fecha_creacion
+                ).first()
+                recreado_count = incident.recreado if incident and incident.recreado else 0
                 
                 recreado_count += 1
                 asunto_splynx = f"{asunto_splynx} [RECREADO x{recreado_count}]"
@@ -375,29 +364,30 @@ class TicketManager:
                 
                 # Actualizar assigned_to, is_created_splynx y recreado en la base de datos
                 from app.interface.interfaces import IncidentsInterface
+                from app.models.models import IncidentsDetection
                 try:
-                    incidents = IncidentsInterface.get_all()
-                    for incident in incidents:
-                        if (incident.Cliente == cliente and
-                                incident.Asunto == asunto_original and
-                                incident.Fecha_Creacion == fecha_creacion):
-                            
-                            # Preparar datos de actualización
-                            update_data = {
-                                "assigned_to": assigned_person_id,
-                                "is_created_splynx": True,
-                                "is_closed": False  # Resetear estado cerrado
-                            }
-                            
-                            # Si es una recreación, incrementar contador
-                            if ticket_data.get("should_recreate"):
-                                current_recreado = incident.recreado if hasattr(incident, 'recreado') and incident.recreado else 0
-                                update_data["recreado"] = current_recreado + 1
-                                logger.info(f"🔄 Incrementando contador recreado: {current_recreado} -> {current_recreado + 1} para ticket {ticket_id}")
-                            
-                            IncidentsInterface.update(incident.id, update_data)
-                            logger.info(f"✅ Actualizado ticket en BD: assigned_to={assigned_person_id}, is_created_splynx=True para ticket {ticket_id}")
-                            break
+                    incident = IncidentsDetection.query.filter_by(
+                        Cliente=cliente,
+                        Asunto=asunto_original,
+                        Fecha_Creacion=fecha_creacion
+                    ).first()
+
+                    if incident:
+                        # Preparar datos de actualización
+                        update_data = {
+                            "assigned_to": assigned_person_id,
+                            "is_created_splynx": True,
+                            "is_closed": False  # Resetear estado cerrado
+                        }
+
+                        # Si es una recreación, incrementar contador
+                        if ticket_data.get("should_recreate"):
+                            current_recreado = incident.recreado if hasattr(incident, 'recreado') and incident.recreado else 0
+                            update_data["recreado"] = current_recreado + 1
+                            logger.info(f"🔄 Incrementando contador recreado: {current_recreado} -> {current_recreado + 1} para ticket {ticket_id}")
+
+                        IncidentsInterface.update(incident.id, update_data)
+                        logger.info(f"✅ Actualizado ticket en BD: assigned_to={assigned_person_id}, is_created_splynx=True para ticket {ticket_id}")
                 except Exception as e:
                     logger.error(f"❌ Error al actualizar ticket en BD: {e}")
 
@@ -710,7 +700,6 @@ class TicketManager:
         from app.utils.constants import SPLYNX_SUPPORT_GROUP_ID, TIMEZONE
         from app.utils.config_helper import ConfigHelper
         from app.services.whatsapp_service import WhatsAppService
-        from app.models.models import OperatorConfig
         from datetime import datetime, timedelta
         import pytz
         
@@ -745,8 +734,9 @@ class TicketManager:
             # Inicializar servicio de WhatsApp
             whatsapp_service = WhatsAppService()
             
-            # Obtener todos los operadores activos desde BD
-            operators = OperatorConfig.query.filter_by(is_active=True).all()
+            # Obtener todos los operadores activos desde BD (incluyendo pausados, ya que necesitan notificación de fin de turno)
+            from app.interface.interfaces import OperatorConfigInterface
+            operators = [op for op in OperatorConfigInterface.get_all() if op.is_active]
             
             # Verificar cada operador
             for operator in operators:
@@ -1030,7 +1020,8 @@ class TicketManager:
             logger.info("="*60)
             
             # Obtener todos los tickets asignados (status != 3 = no cerrados)
-            tickets = self.splynx.get_assigned_tickets()
+            from app.utils.constants import SPLYNX_SUPPORT_GROUP_ID
+            tickets = self.splynx.get_assigned_tickets(group_id=SPLYNX_SUPPORT_GROUP_ID)
             
             if not tickets:
                 logger.info("ℹ️  No hay tickets asignados para revisar")
@@ -1041,7 +1032,7 @@ class TicketManager:
             
             for ticket in tickets:
                 ticket_id = ticket.get('id')
-                assigned_to = ticket.get('assigned_to')
+                assigned_to = ticket.get('assign_to') or ticket.get('assigned_to')
                 subject = ticket.get('subject', 'Sin asunto')
                 
                 # Obtener horarios desde BD para el día actual
@@ -1156,6 +1147,6 @@ class TicketManager:
     
     def get_operator_name(self, person_id: int) -> str:
         """Obtiene el nombre del operador por su ID desde la BD"""
-        from app.models.models import OperatorConfig
-        operator = OperatorConfig.query.filter_by(person_id=person_id).first()
+        from app.interface.interfaces import OperatorConfigInterface
+        operator = OperatorConfigInterface.get_by_person_id(person_id)
         return operator.name if operator else f"Operador {person_id}"

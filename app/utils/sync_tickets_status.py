@@ -10,11 +10,11 @@ from app.models.models import IncidentsDetection
 from app.services.splynx_services_singleton import SplynxServicesSingleton
 from app.utils.config_helper import ConfigHelper
 from app.utils.date_utils import parse_gestion_real_date, parse_splynx_date, ensure_argentina_tz
+from app.utils.logger import get_logger
 from datetime import datetime
 import pytz
-import logging
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Timezone de Argentina
 ARGENTINA_TZ = pytz.timezone('America/Argentina/Buenos_Aires')

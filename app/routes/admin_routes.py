@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import pytz
 from sqlalchemy import func
 from app.utils.config import db
-from app.models.models import TicketResponseMetrics, IncidentsDetection
+from app.models.models import IncidentsDetection
 
 logger = get_logger(__name__)
 
@@ -836,26 +836,39 @@ def get_operator_metrics(person_id):
         now = datetime.now(tz_argentina)
         start_date = now - timedelta(days=days)
         
-        metrics = db.session.query(TicketResponseMetrics).filter(
-            TicketResponseMetrics.assigned_to == person_id,
-            TicketResponseMetrics.created_at >= start_date
+        # Query IncidentsDetection instead of deprecated TicketResponseMetrics
+        # Use last_update (DateTime) for reliable date filtering; fall back to all tickets if not available
+        all_operator_tickets = db.session.query(IncidentsDetection).filter(
+            IncidentsDetection.assigned_to == person_id
         ).all()
-        
+
+        # Filter by date range using last_update or parsed Fecha_Creacion
+        from app.utils.date_utils import parse_gestion_real_date
+        metrics = []
+        for ticket in all_operator_tickets:
+            ticket_date = ticket.last_update or parse_gestion_real_date(ticket.Fecha_Creacion)
+            if ticket_date and ticket_date >= start_date.replace(tzinfo=None):
+                metrics.append(ticket)
+
         total_tickets = len(metrics)
         resolved_tickets = len([m for m in metrics if m.is_closed])
         unresolved_tickets = total_tickets - resolved_tickets
         exceeded_threshold = len([m for m in metrics if m.exceeded_threshold])
-        
+
         response_times = [m.response_time_minutes for m in metrics if m.response_time_minutes]
         avg_response_time = sum(response_times) / len(response_times) if response_times else 0
 
         # Calcular tiempo promedio de resolución (solo tickets cerrados)
         resolution_times = [m.resolution_time_minutes for m in metrics if m.is_closed and m.resolution_time_minutes]
         avg_resolution_time = sum(resolution_times) / len(resolution_times) if resolution_times else 0
-        
+
         daily_stats = {}
         for metric in metrics:
-            date_key = metric.created_at.strftime('%Y-%m-%d')
+            # Use last_update or parsed Fecha_Creacion for daily grouping
+            metric_date = metric.last_update or parse_gestion_real_date(metric.Fecha_Creacion)
+            if not metric_date:
+                continue
+            date_key = metric_date.strftime('%Y-%m-%d')
             if date_key not in daily_stats:
                 daily_stats[date_key] = {'total': 0, 'resolved': 0, 'exceeded': 0}
             daily_stats[date_key]['total'] += 1

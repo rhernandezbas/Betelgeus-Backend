@@ -27,6 +27,8 @@ def run_process_webhooks_job(app):
         # Obtener configuración de horarios desde BD
         FINDE_HORA_INICIO = ConfigHelper.get_int('FINDE_HORA_INICIO', 9)
         FINDE_HORA_FIN = ConfigHelper.get_int('FINDE_HORA_FIN', 21)
+        SEMANA_HORA_INICIO = ConfigHelper.get_int('SEMANA_HORA_INICIO', 8)
+        SEMANA_HORA_FIN = ConfigHelper.get_int('SEMANA_HORA_FIN', 23)
 
     # Obtener hora actual en Argentina
     tz_argentina = pytz.timezone('America/Argentina/Buenos_Aires')
@@ -34,13 +36,13 @@ def run_process_webhooks_job(app):
     day_of_week = now.weekday()  # 0=Lunes, 6=Domingo
     current_hour = now.hour
 
-    # HORARIO LABORAL: 8 AM - 11 PM (lunes a viernes) / 9 AM - 9 PM (fin de semana)
+    # HORARIO LABORAL: configurable desde BD (lunes a viernes / fin de semana)
     if day_of_week >= 5:  # Sábado o Domingo
         if not (FINDE_HORA_INICIO <= current_hour < FINDE_HORA_FIN):
             logger.info(f"FIN DE SEMANA FUERA DE HORARIO ({current_hour}:00) - Saltando ejecución")
             return
     else:  # Lunes a Viernes
-        if not (8 <= current_hour < 23):  # 8 AM - 11 PM
+        if not (SEMANA_HORA_INICIO <= current_hour < SEMANA_HORA_FIN):
             logger.info(f"FUERA DE HORARIO LABORAL ({current_hour}:00) - Saltando ejecución")
             return
 
