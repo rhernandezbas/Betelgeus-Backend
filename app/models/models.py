@@ -328,7 +328,7 @@ class HookNuevoTicket(db.Model):
     numero_cliente = db.Column(db.String(100))
     numero_whatsapp = db.Column(db.String(50))
     nombre_usuario = db.Column(db.String(200))
-    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+    received_at = db.Column(db.DateTime, default=datetime.now)
     processed = db.Column(db.Boolean, default=False, index=True)
     processed_at = db.Column(db.DateTime, nullable=True)
 
@@ -374,7 +374,7 @@ class HookCierreTicket(db.Model):
     numero_cliente = db.Column(db.String(100))
     numero_whatsapp = db.Column(db.String(50))
     nombre_usuario = db.Column(db.String(200))
-    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+    received_at = db.Column(db.DateTime, default=datetime.now)
 
     def to_dict(self):
         return {

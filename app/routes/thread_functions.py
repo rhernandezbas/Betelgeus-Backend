@@ -4,6 +4,7 @@ Estas funciones son versiones de las funciones de views.py que no dependen de Fl
 Optimizado con patrón Singleton para evitar múltiples logins
 """
 
+import threading
 from app.services.splynx_services_singleton import SplynxServicesSingleton
 from app.services.ticket_manager import TicketManager
 from app.utils.logger import get_logger
@@ -12,16 +13,19 @@ logger = get_logger(__name__)
 
 # Instancia singleton global (se reutiliza en todos los threads)
 _splynx_service = None
+_splynx_lock = threading.Lock()
 
 
 def get_splynx_service():
     """
     Obtiene la instancia singleton de SplynxServices.
-    Thread-safe y reutilizable.
+    Thread-safe con lock.
     """
     global _splynx_service
     if _splynx_service is None:
-        _splynx_service = SplynxServicesSingleton()
+        with _splynx_lock:
+            if _splynx_service is None:
+                _splynx_service = SplynxServicesSingleton()
     return _splynx_service
 
 
@@ -36,7 +40,7 @@ def thread_process_webhooks(app):
         try:
             # Step 1: Process pending webhooks into incidents
             result = process_pending_webhooks()
-            logger.info(f"Webhooks procesados: {result['processed']} nuevos, {result['duplicates']} duplicados, {result['errors']} errores")
+            logger.info(f"Webhooks procesados: {result['processed']} nuevos, {result['duplicates']} duplicados, {result['skipped']} omitidos, {result['errors']} errores")
 
             # Step 2: Create tickets in Splynx for new incidents
             sp = get_splynx_service()

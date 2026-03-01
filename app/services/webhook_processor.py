@@ -5,6 +5,7 @@ Replaces the old Selenium CSV download pipeline.
 
 from app.interface.webhook_interface import HookNuevoTicketInterface
 from app.interface.interfaces import IncidentsInterface
+from app.utils.config_helper import ConfigHelper
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,16 +23,29 @@ def process_pending_webhooks():
 
     if not unprocessed:
         logger.info("No hay webhooks pendientes de procesar")
-        return {'processed': 0, 'duplicates': 0, 'errors': 0}
+        return {'processed': 0, 'duplicates': 0, 'skipped': 0, 'errors': 0}
 
     logger.info(f"Procesando {len(unprocessed)} webhooks pendientes...")
 
     processed = 0
     duplicates = 0
+    skipped = 0
     errors = 0
+
+    # Solo procesar tickets del motivo permitido para crear en Splynx (configurable desde BD)
+    motivo_permitido = ConfigHelper.get('WEBHOOK_MOTIVO_PERMITIDO', 'General Soporte')
 
     for hook in unprocessed:
         try:
+            motivo = hook.motivo_contacto or ""
+
+            # Filtrar: solo el motivo permitido se crea en Splynx
+            if motivo.strip().lower() != motivo_permitido.strip().lower():
+                skipped += 1
+                logger.info(f"Webhook {hook.id} omitido: motivo_contacto='{motivo}' (solo se procesa '{motivo_permitido}')")
+                HookNuevoTicketInterface.mark_processed(hook.id)
+                continue
+
             # Build display name: prefer nombre_usuario, fall back to nombre_empresa
             display_name = hook.nombre_usuario or hook.nombre_empresa or "Cliente"
 
@@ -65,11 +79,12 @@ def process_pending_webhooks():
             logger.error(f"Error procesando webhook {hook.id}: {e}")
 
     logger.info(
-        f"Procesamiento completado: {processed} nuevos, {duplicates} duplicados, {errors} errores"
+        f"Procesamiento completado: {processed} nuevos, {duplicates} duplicados, {skipped} omitidos (otro motivo), {errors} errores"
     )
 
     return {
         'processed': processed,
         'duplicates': duplicates,
+        'skipped': skipped,
         'errors': errors,
     }
