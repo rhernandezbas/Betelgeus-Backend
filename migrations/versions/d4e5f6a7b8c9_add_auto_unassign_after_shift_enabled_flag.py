@@ -18,7 +18,7 @@ depends_on = None
 
 def upgrade():
     op.execute("""
-        INSERT INTO system_config (key, value, value_type, description, category, updated_at, updated_by)
+        INSERT INTO system_config (`key`, value, value_type, description, category, updated_at, updated_by)
         VALUES (
             'AUTO_UNASSIGN_AFTER_SHIFT_ENABLED',
             'false',
@@ -28,7 +28,7 @@ def upgrade():
             NOW(),
             'migration'
         )
-        ON DUPLICATE KEY UPDATE key = key
+        ON DUPLICATE KEY UPDATE `key` = `key`
     """)
 
 
