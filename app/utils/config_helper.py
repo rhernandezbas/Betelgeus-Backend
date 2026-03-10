@@ -112,3 +112,8 @@ class ConfigHelper:
     def is_whatsapp_enabled() -> bool:
         """Verifica si WhatsApp está habilitado"""
         return ConfigHelper.get_bool('WHATSAPP_ENABLED', True)
+
+    @staticmethod
+    def is_auto_unassign_enabled() -> bool:
+        """Verifica si la desasignación automática post-turno está habilitada"""
+        return ConfigHelper.get_bool('AUTO_UNASSIGN_AFTER_SHIFT_ENABLED', False)

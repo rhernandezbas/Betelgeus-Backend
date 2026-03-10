@@ -172,6 +172,14 @@ def system_status():
 def auto_unassign_after_shift():
     """Desasigna tickets automáticamente 1 hora después del fin de turno"""
     try:
+        from app.utils.config_helper import ConfigHelper
+        if not ConfigHelper.is_auto_unassign_enabled():
+            return jsonify({
+                "success": True,
+                "message": "Desasignación automática deshabilitada (AUTO_UNASSIGN_AFTER_SHIFT_ENABLED=false)",
+                "skipped": True
+            }), 200
+
         hilo = threading.Thread(target=thread_auto_unassign_after_shift, args=(current_app._get_current_object(),))
         hilo.start()
         return jsonify({
